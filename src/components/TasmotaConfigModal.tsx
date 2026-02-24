@@ -1,0 +1,691 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  X, Cpu, Wifi, Settings, Info, RefreshCw, Terminal, 
+  Zap, Timer, ToggleLeft, Sliders, FileCode, Download, 
+  Power, Activity, ChevronRight, ArrowLeft, Send
+} from 'lucide-react';
+import { Device, DeviceInfo } from '../types';
+import { cn } from '../utils/cn';
+
+interface TasmotaConfigModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  device: Device;
+  deviceInfo: DeviceInfo | undefined;
+  onCommand: (command: string, payload?: string) => void;
+  isConnected: boolean;
+  lastMessage?: { topic: string; payload: string } | null;
+}
+
+type MenuPage = 'main' | 'configuration' | 'module' | 'wifi' | 'logging' | 'other' | 'template' | 
+                'console' | 'information' | 'firmware' | 'timers' | 'gpio';
+
+export function TasmotaConfigModal({ 
+  isOpen, 
+  onClose, 
+  device, 
+  deviceInfo,
+  onCommand,
+  isConnected,
+  lastMessage
+}: TasmotaConfigModalProps) {
+  const [currentPage, setCurrentPage] = useState<MenuPage>('main');
+  const [consoleInput, setConsoleInput] = useState('');
+  const [consoleHistory, setConsoleHistory] = useState<string[]>([]);
+  const [timerInputs, setTimerInputs] = useState<Record<string, string>>({});
+  const consoleRef = useRef<HTMLDivElement>(null);
+  const initialLoadRef = useRef(false);
+
+  // Memoized command sender to prevent multiple calls
+  const sendCommand = useCallback((cmd: string, payload: string = '') => {
+    onCommand(cmd, payload);
+  }, [onCommand]);
+
+  // Request device info only once when modal opens
+  useEffect(() => {
+    if (isOpen && !initialLoadRef.current && isConnected) {
+      initialLoadRef.current = true;
+      // Single STATUS 0 gets most info
+      const timer = setTimeout(() => {
+        sendCommand('STATUS', '0');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    if (!isOpen) {
+      initialLoadRef.current = false;
+    }
+  }, [isOpen, isConnected, sendCommand]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentPage('main');
+      setConsoleHistory([]);
+    }
+  }, [isOpen]);
+
+  // Update console history when new message arrives
+  useEffect(() => {
+    if (lastMessage && isOpen && currentPage === 'console') {
+      // Only show messages for this device
+      if (lastMessage.topic.includes(device.topic)) {
+        const formattedMsg = `${lastMessage.topic}: ${lastMessage.payload}`;
+        setConsoleHistory(prev => {
+          // Prevent duplicate messages
+          if (prev.length > 0 && prev[prev.length - 1] === formattedMsg) {
+            return prev;
+          }
+          return [...prev.slice(-50), formattedMsg];
+        });
+        // Auto scroll to bottom
+        setTimeout(() => {
+          if (consoleRef.current) {
+            consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+          }
+        }, 50);
+      }
+    }
+  }, [lastMessage, isOpen, currentPage, device.topic]);
+
+  if (!isOpen) return null;
+
+  const handleConsoleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (consoleInput.trim()) {
+      const parts = consoleInput.trim().split(' ');
+      const cmd = parts[0];
+      const payload = parts.slice(1).join(' ');
+      sendCommand(cmd, payload);
+      setConsoleHistory(prev => [...prev, `> ${consoleInput}`]);
+      setConsoleInput('');
+    }
+  };
+
+  const handleQuickCommand = (cmd: string) => {
+    const parts = cmd.split(' ');
+    const command = parts[0];
+    const payload = parts.slice(1).join(' ');
+    sendCommand(command, payload);
+    if (currentPage === 'console') {
+      setConsoleHistory(prev => [...prev, `> ${cmd}`]);
+    }
+  };
+
+  const renderMainMenu = () => (
+    <div className="space-y-3">
+      {/* Device Info Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-xl mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold">{device.name}</h3>
+            <p className="text-blue-100 font-mono text-sm">{device.topic}</p>
+          </div>
+          <div className="text-right">
+            {deviceInfo?.ipAddress && (
+              <p className="font-mono text-sm bg-white/20 px-3 py-1 rounded-full">
+                {deviceInfo.ipAddress}
+              </p>
+            )}
+          </div>
+        </div>
+        {deviceInfo?.module && (
+          <p className="text-blue-100 text-sm mt-2">Module: {deviceInfo.module}</p>
+        )}
+      </div>
+
+      {/* Quick Status */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className={cn(
+          "p-3 rounded-xl text-center",
+          deviceInfo?.isOnline ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+        )}>
+          <Activity className="w-5 h-5 mx-auto mb-1" />
+          <p className="text-sm font-medium">{deviceInfo?.isOnline ? 'Online' : 'Offline'}</p>
+        </div>
+        <div className={cn(
+          "p-3 rounded-xl text-center",
+          deviceInfo?.status === 'ON' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"
+        )}>
+          <Power className="w-5 h-5 mx-auto mb-1" />
+          <p className="text-sm font-medium">{deviceInfo?.status || 'Unknown'}</p>
+        </div>
+      </div>
+
+      {/* Main Menu Items */}
+      <MenuItem 
+        icon={Settings} 
+        label="Configuration" 
+        onClick={() => setCurrentPage('configuration')}
+      />
+      <MenuItem 
+        icon={Terminal} 
+        label="Console" 
+        onClick={() => setCurrentPage('console')}
+      />
+      <MenuItem 
+        icon={Info} 
+        label="Information" 
+        onClick={() => setCurrentPage('information')}
+      />
+      <MenuItem 
+        icon={Download} 
+        label="Firmware Upgrade" 
+        onClick={() => setCurrentPage('firmware')}
+      />
+
+      {/* Quick Actions */}
+      <div className="border-t pt-4 mt-4">
+        <h4 className="text-sm font-semibold text-gray-500 mb-3">Quick Actions</h4>
+        <div className="grid grid-cols-3 gap-2">
+          <QuickButton 
+            icon={Power} 
+            label="Toggle" 
+            onClick={() => sendCommand('POWER', 'TOGGLE')}
+            color="emerald"
+          />
+          <QuickButton 
+            icon={RefreshCw} 
+            label="Restart" 
+            onClick={() => sendCommand('RESTART', '1')}
+            color="amber"
+          />
+          <QuickButton 
+            icon={Activity} 
+            label="Status" 
+            onClick={() => sendCommand('STATUS', '0')}
+            color="blue"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderConfiguration = () => (
+    <div className="space-y-3">
+      <BackButton onClick={() => setCurrentPage('main')} />
+      <h3 className="text-lg font-bold text-gray-800 mb-4">Configuration</h3>
+      
+      <MenuItem icon={Cpu} label="Configure Module" onClick={() => setCurrentPage('module')} />
+      <MenuItem icon={Wifi} label="Configure WiFi" onClick={() => setCurrentPage('wifi')} />
+      <MenuItem icon={FileCode} label="Configure Logging" onClick={() => setCurrentPage('logging')} />
+      <MenuItem icon={Sliders} label="Configure Other" onClick={() => setCurrentPage('other')} />
+      <MenuItem icon={Cpu} label="Configure Template" onClick={() => setCurrentPage('template')} />
+      <MenuItem icon={ToggleLeft} label="Configure GPIO" onClick={() => setCurrentPage('gpio')} />
+      <MenuItem icon={Timer} label="Configure Timers" onClick={() => setCurrentPage('timers')} />
+    </div>
+  );
+
+  const renderModule = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('configuration')} />
+      <h3 className="text-lg font-bold text-gray-800">Configure Module</h3>
+      
+      <div className="bg-gray-50 p-4 rounded-xl">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Module Type</label>
+        <p className="text-gray-600 mb-3">{deviceInfo?.module || 'Click Get Module'}</p>
+        
+        <div className="space-y-2">
+          <CommandButton label="Get Module" onClick={() => sendCommand('Module', '')} />
+          <CommandButton label="Get GPIO" onClick={() => sendCommand('GPIO', '')} />
+          <CommandButton label="Get Template" onClick={() => sendCommand('Template', '')} />
+        </div>
+      </div>
+
+      <div className="bg-amber-50 p-4 rounded-xl">
+        <p className="text-sm text-amber-700">
+          <strong>Note:</strong> For safety, module configuration changes should be done through the device's local web interface.
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderWifi = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('configuration')} />
+      <h3 className="text-lg font-bold text-gray-800">Configure WiFi</h3>
+      
+      <div className="bg-gray-50 p-4 rounded-xl space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-500">Current Network</label>
+          <p className="text-gray-800 font-medium">{deviceInfo?.ssid || 'Click Get WiFi'}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-500">Signal Strength (RSSI)</label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <div 
+                className={cn(
+                  "h-2 rounded-full",
+                  (deviceInfo?.rssi ?? 0) > 70 ? "bg-emerald-500" : 
+                  (deviceInfo?.rssi ?? 0) > 40 ? "bg-amber-500" : "bg-red-500"
+                )}
+                style={{ width: `${deviceInfo?.rssi || 0}%` }}
+              />
+            </div>
+            <span className="text-sm text-gray-600">{deviceInfo?.rssi || 0}%</span>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-500">IP Address</label>
+          <p className="text-gray-800 font-mono">{deviceInfo?.ipAddress || '-'}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-500">Hostname</label>
+          <p className="text-gray-800 font-mono">{deviceInfo?.hostname || '-'}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-500">MAC Address</label>
+          <p className="text-gray-800 font-mono">{deviceInfo?.mac || '-'}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <CommandButton label="Get WiFi Status" onClick={() => sendCommand('STATUS', '5')} />
+      </div>
+    </div>
+  );
+
+  const renderLogging = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('configuration')} />
+      <h3 className="text-lg font-bold text-gray-800">Configure Logging</h3>
+      
+      <div className="space-y-2">
+        <CommandButton label="Get Serial Log Level" onClick={() => sendCommand('SerialLog', '')} />
+        <CommandButton label="Get Web Log Level" onClick={() => sendCommand('WebLog', '')} />
+        <CommandButton label="Get MQTT Log Level" onClick={() => sendCommand('MqttLog', '')} />
+        <CommandButton label="Get Syslog Level" onClick={() => sendCommand('SysLog', '')} />
+      </div>
+
+      <div className="bg-gray-50 p-4 rounded-xl">
+        <h4 className="font-medium text-gray-700 mb-2">Log Levels</h4>
+        <p className="text-sm text-gray-600">0 = None, 1 = Error, 2 = Info, 3 = Debug, 4 = More Debug</p>
+      </div>
+    </div>
+  );
+
+  const renderOther = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('configuration')} />
+      <h3 className="text-lg font-bold text-gray-800">Configure Other</h3>
+      
+      <div className="space-y-2">
+        <CommandButton label="Get Device Name" onClick={() => sendCommand('DeviceName', '')} />
+        <CommandButton label="Get Friendly Name" onClick={() => sendCommand('FriendlyName', '')} />
+        <CommandButton label="Get Web Password Status" onClick={() => sendCommand('WebPassword', '')} />
+        <CommandButton label="Get Emulation Mode" onClick={() => sendCommand('Emulation', '')} />
+        <CommandButton label="Get Timezone" onClick={() => sendCommand('Timezone', '')} />
+        <CommandButton label="Get Latitude" onClick={() => sendCommand('Latitude', '')} />
+        <CommandButton label="Get Longitude" onClick={() => sendCommand('Longitude', '')} />
+      </div>
+    </div>
+  );
+
+  const renderTemplate = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('configuration')} />
+      <h3 className="text-lg font-bold text-gray-800">Configure Template</h3>
+      
+      <div className="space-y-2">
+        <CommandButton label="Get Current Template" onClick={() => sendCommand('Template', '')} />
+        <CommandButton label="Get GPIO Configuration" onClick={() => sendCommand('GPIO', '')} />
+        <CommandButton label="Get GPIO0 State" onClick={() => sendCommand('GPIO0', '')} />
+      </div>
+
+      <div className="bg-blue-50 p-4 rounded-xl">
+        <p className="text-sm text-blue-700">
+          Templates define the GPIO configuration for your device. Use the console to apply custom templates.
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderGpio = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('configuration')} />
+      <h3 className="text-lg font-bold text-gray-800">Configure GPIO</h3>
+      
+      <div className="space-y-2">
+        <CommandButton label="Get All GPIO" onClick={() => sendCommand('GPIO', 'ALL')} />
+        <CommandButton label="Get GPIO Configuration" onClick={() => sendCommand('GPIO', '')} />
+        <CommandButton label="Get GPIOS" onClick={() => sendCommand('GPIOS', '')} />
+      </div>
+
+      <div className="bg-gray-50 p-4 rounded-xl">
+        <h4 className="font-medium text-gray-700 mb-2">GPIO Commands</h4>
+        <ul className="text-sm text-gray-600 space-y-1">
+          <li>• GPIO - Show current GPIO configuration</li>
+          <li>• GPIO255 - Reset all GPIOs to default</li>
+          <li>• GPIOS - Show available GPIO components</li>
+        </ul>
+      </div>
+    </div>
+  );
+
+  const renderTimers = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('configuration')} />
+      <h3 className="text-lg font-bold text-gray-800">Configure Timers</h3>
+      
+      <div className="bg-gray-50 p-4 rounded-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-gray-700">Timers Status</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => sendCommand('Timers', '0')}
+              className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
+            >
+              Disable All
+            </button>
+            <button
+              onClick={() => sendCommand('Timers', '1')}
+              className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200"
+            >
+              Enable All
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map(num => (
+          <div key={num} className="bg-white border rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-medium text-gray-700">Timer {num}</span>
+              <button
+                onClick={() => sendCommand(`Timer${num}`, '')}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                Get Status
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder='{"Enable":1,"Time":"06:00"}'
+                value={timerInputs[`timer${num}`] || ''}
+                onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}`]: e.target.value }))}
+                className="flex-1 px-3 py-2 border rounded-lg text-sm font-mono"
+              />
+              <button
+                onClick={() => {
+                  if (timerInputs[`timer${num}`]) {
+                    sendCommand(`Timer${num}`, timerInputs[`timer${num}`]);
+                  }
+                }}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              >
+                Set
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <CommandButton label="Get All Timers" onClick={() => sendCommand('Timers', '')} />
+    </div>
+  );
+
+  const renderConsole = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('main')} />
+      <h3 className="text-lg font-bold text-gray-800">Console</h3>
+      
+      {/* Console Output */}
+      <div 
+        ref={consoleRef}
+        className="bg-gray-900 rounded-xl p-4 h-64 overflow-y-auto font-mono text-sm"
+      >
+        {consoleHistory.length === 0 ? (
+          <p className="text-gray-500">Enter commands below... Response will appear here.</p>
+        ) : (
+          consoleHistory.map((line, i) => (
+            <p 
+              key={i} 
+              className={cn(
+                "break-all whitespace-pre-wrap mb-1",
+                line.startsWith('>') ? "text-cyan-400" : "text-emerald-400"
+              )}
+            >
+              {line}
+            </p>
+          ))
+        )}
+      </div>
+
+      {/* Console Input */}
+      <form onSubmit={handleConsoleSubmit} className="flex gap-2">
+        <input
+          type="text"
+          value={consoleInput}
+          onChange={(e) => setConsoleInput(e.target.value)}
+          placeholder="Enter command (e.g., POWER, STATUS 0)"
+          className="flex-1 px-4 py-2 border rounded-xl font-mono"
+        />
+        <button
+          type="submit"
+          disabled={!isConnected}
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50"
+        >
+          <Send className="w-5 h-5" />
+        </button>
+      </form>
+
+      {/* Quick Commands */}
+      <div className="grid grid-cols-4 gap-2">
+        {['POWER', 'STATUS', 'STATE', 'TIMERS', 'GPIO', 'MODULE', 'WIFI', 'RESTART 1'].map(cmd => (
+          <button
+            key={cmd}
+            onClick={() => handleQuickCommand(cmd)}
+            className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-mono"
+          >
+            {cmd}
+          </button>
+        ))}
+      </div>
+      
+      {/* Clear Console */}
+      <button
+        onClick={() => setConsoleHistory([])}
+        className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-sm"
+      >
+        Clear Console
+      </button>
+    </div>
+  );
+
+  const renderInformation = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('main')} />
+      <h3 className="text-lg font-bold text-gray-800">Information</h3>
+      
+      <div className="space-y-3">
+        <InfoRow label="Device Name" value={device.name} />
+        <InfoRow label="Topic" value={device.topic} />
+        <InfoRow label="IP Address" value={deviceInfo?.ipAddress} />
+        <InfoRow label="Hostname" value={deviceInfo?.hostname} />
+        <InfoRow label="MAC Address" value={deviceInfo?.mac} />
+        <InfoRow label="Module" value={deviceInfo?.module} />
+        <InfoRow label="Firmware Version" value={deviceInfo?.version} />
+        <InfoRow label="Uptime" value={deviceInfo?.uptime} />
+        <InfoRow label="WiFi SSID" value={deviceInfo?.ssid} />
+        <InfoRow label="WiFi Signal" value={deviceInfo?.rssi ? `${deviceInfo.rssi}%` : undefined} />
+        <InfoRow label="Free Memory" value={deviceInfo?.freeMemory ? `${deviceInfo.freeMemory} KB` : undefined} />
+        <InfoRow label="MQTT Messages" value={deviceInfo?.mqttCount?.toString()} />
+        
+        {deviceInfo?.power !== undefined && (
+          <InfoRow label="Power" value={`${deviceInfo.power} W`} />
+        )}
+        {deviceInfo?.voltage !== undefined && (
+          <InfoRow label="Voltage" value={`${deviceInfo.voltage} V`} />
+        )}
+        {deviceInfo?.temperature !== undefined && (
+          <InfoRow label="Temperature" value={`${deviceInfo.temperature} °C`} />
+        )}
+        {deviceInfo?.humidity !== undefined && (
+          <InfoRow label="Humidity" value={`${deviceInfo.humidity} %`} />
+        )}
+      </div>
+
+      <CommandButton label="Refresh Info" onClick={() => sendCommand('STATUS', '0')} />
+    </div>
+  );
+
+  const renderFirmware = () => (
+    <div className="space-y-4">
+      <BackButton onClick={() => setCurrentPage('main')} />
+      <h3 className="text-lg font-bold text-gray-800">Firmware Upgrade</h3>
+      
+      <div className="bg-gray-50 p-4 rounded-xl">
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-500">Current Version</label>
+          <p className="text-gray-800 font-mono">{deviceInfo?.version || 'Click Get Version'}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <CommandButton label="Get Version" onClick={() => sendCommand('STATUS', '2')} />
+        <CommandButton label="Get OTA URL" onClick={() => sendCommand('OtaUrl', '')} />
+        <CommandButton label="Check for Update" onClick={() => sendCommand('Upgrade', '1')} />
+      </div>
+
+      <div className="bg-amber-50 p-4 rounded-xl">
+        <p className="text-sm text-amber-700">
+          <strong>Warning:</strong> Firmware upgrades should be performed carefully. Make sure you have a stable network connection.
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'main': return renderMainMenu();
+      case 'configuration': return renderConfiguration();
+      case 'module': return renderModule();
+      case 'wifi': return renderWifi();
+      case 'logging': return renderLogging();
+      case 'other': return renderOther();
+      case 'template': return renderTemplate();
+      case 'gpio': return renderGpio();
+      case 'timers': return renderTimers();
+      case 'console': return renderConsole();
+      case 'information': return renderInformation();
+      case 'firmware': return renderFirmware();
+      default: return renderMainMenu();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-white font-bold">Tasmota Config</h2>
+              <p className="text-orange-100 text-sm">{device.name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+          {!isConnected ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wifi className="w-8 h-8 text-red-500" />
+              </div>
+              <p className="text-gray-600">Not connected to MQTT broker</p>
+            </div>
+          ) : (
+            renderPage()
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Helper Components
+function MenuItem({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm group-hover:shadow">
+          <Icon className="w-5 h-5 text-gray-600" />
+        </div>
+        <span className="font-medium text-gray-700">{label}</span>
+      </div>
+      <ChevronRight className="w-5 h-5 text-gray-400" />
+    </button>
+  );
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-2"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      <span className="text-sm font-medium">Back</span>
+    </button>
+  );
+}
+
+function CommandButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+    >
+      {label}
+    </button>
+  );
+}
+
+function QuickButton({ icon: Icon, label, onClick, color }: { 
+  icon: React.ElementType; 
+  label: string; 
+  onClick: () => void;
+  color: 'emerald' | 'amber' | 'blue' | 'red';
+}) {
+  const colors = {
+    emerald: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200',
+    amber: 'bg-amber-100 text-amber-700 hover:bg-amber-200',
+    blue: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
+    red: 'bg-red-100 text-red-700 hover:bg-red-200',
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn("flex flex-col items-center gap-1 p-3 rounded-xl transition-colors", colors[color])}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="text-xs font-medium">{label}</span>
+    </button>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm font-medium text-gray-800 font-mono">
+        {value || <span className="text-gray-400">-</span>}
+      </span>
+    </div>
+  );
+}
