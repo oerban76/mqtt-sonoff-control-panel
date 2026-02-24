@@ -33,6 +33,7 @@ export function TasmotaConfigModal({
   const [consoleInput, setConsoleInput] = useState('');
   const [consoleHistory, setConsoleHistory] = useState<string[]>([]);
   const [moduleSelect, setModuleSelect] = useState('');
+  const [gpioConfig, setGpioConfig] = useState<Record<string, string>>({});
   const [timerInputs, setTimerInputs] = useState<Record<string, string>>({});
   const consoleRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef(false);
@@ -239,31 +240,76 @@ export function TasmotaConfigModal({
       { id: 71, name: 'Sonoff iFan03' },
     ];
 
+    const gpioFunctions = [
+      { id: 0, name: 'None' },
+      { id: 1, name: 'Button' },
+      { id: 21, name: 'Switch' },
+      { id: 52, name: 'Relay' },
+      { id: 56, name: 'LED' },
+      { id: 17, name: 'DHT11' },
+      { id: 18, name: 'DHT22' },
+      { id: 32, name: 'PWM' },
+    ];
+
+    const gpioPins = [0, 1, 2, 3, 4, 5, 9, 10, 12, 13, 14, 15, 16];
+
     return (
       <div className="space-y-4">
         <BackButton onClick={() => setCurrentPage('configuration')} />
         <h3 className="text-lg font-bold text-gray-800">Module parameters</h3>
         
-        <div className="bg-white border rounded-xl p-4">
-          <label className="text-sm font-medium text-gray-700 block mb-2">Module type</label>
-          <select 
-            className="w-full px-3 py-2 border rounded-lg text-sm"
-            value={moduleSelect}
-            onChange={(e) => {
-              setModuleSelect(e.target.value);
-              if (e.target.value) sendCommand('Module', e.target.value);
-            }}
-          >
-            <option value="">-- Select module --</option>
-            {modules.map(m => (
-              <option key={m.id} value={m.id}>{m.id} {m.name}</option>
-            ))}
-          </select>
+        <div className="bg-white border rounded-xl p-4 space-y-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Module type</label>
+            <select 
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={moduleSelect}
+              onChange={(e) => setModuleSelect(e.target.value)}
+            >
+              <option value="">-- Select module --</option>
+              {modules.map(m => (
+                <option key={m.id} value={m.id}>{m.id} {m.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="border-t pt-3">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">GPIO Configuration</h4>
+            <div className="space-y-2">
+              {gpioPins.map(pin => (
+                <div key={pin} className="flex items-center gap-2">
+                  <label className="text-xs text-gray-600 w-16">GPIO{pin}</label>
+                  <select
+                    className="flex-1 px-2 py-1 border rounded text-xs"
+                    value={gpioConfig[`gpio${pin}`] || '0'}
+                    onChange={(e) => setGpioConfig(prev => ({ ...prev, [`gpio${pin}`]: e.target.value }))}
+                  >
+                    {gpioFunctions.map(f => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+
+        <button
+          onClick={() => {
+            if (moduleSelect) sendCommand('Module', moduleSelect);
+            Object.keys(gpioConfig).forEach(key => {
+              const pin = key.replace('gpio', '');
+              sendCommand(`GPIO${pin}`, gpioConfig[key]);
+            });
+          }}
+          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl"
+        >
+          Save
+        </button>
 
         <div className="bg-amber-50 p-4 rounded-xl">
           <p className="text-sm text-amber-700">
-            <strong>Warning:</strong> Changing the module type will restart the device.
+            <strong>Warning:</strong> Device will restart after saving changes.
           </p>
         </div>
       </div>
