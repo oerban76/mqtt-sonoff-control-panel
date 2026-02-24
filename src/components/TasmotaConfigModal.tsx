@@ -135,7 +135,8 @@ export function TasmotaConfigModal({
 
   // Parse MQTT messages for module config
   useEffect(() => {
-    if (!isOpen || !lastMessage || !lastMessage.topic.includes(device.topic)) return;
+    if (!isOpen || !lastMessage) return;
+    if (!lastMessage.topic.includes(device.topic)) return;
     
     const payload = lastMessage.payload;
     console.log('📨 MQTT:', lastMessage.topic, payload);
@@ -159,7 +160,7 @@ export function TasmotaConfigModal({
       }
       
       // Parse Module response
-      if (json.Module !== undefined) {
+      if (json.Module !== undefined && currentPage === 'module') {
         let moduleId = '';
         if (typeof json.Module === 'object' && json.Module !== null) {
           const moduleKey = Object.keys(json.Module)[0];
@@ -178,103 +179,111 @@ export function TasmotaConfigModal({
       }
       
       // Parse GPIO response
-      const gpioKeys = Object.keys(json).filter(k => k.startsWith('GPIO'));
-      if (gpioKeys.length > 0) {
-        setGpioConfig(prev => {
-          if (Object.keys(prev).length > 0) return prev;
-          const newConfig: Record<string, string> = {};
-          gpioKeys.forEach(key => {
-            const pin = key.replace('GPIO', '');
-            const gpioValue = json[key];
-            if (typeof gpioValue === 'object' && gpioValue !== null) {
-              const funcValue = Object.values(gpioValue)[0];
-              newConfig[`gpio${pin}`] = String(funcValue);
-            } else {
-              newConfig[`gpio${pin}`] = String(gpioValue);
-            }
+      if (currentPage === 'module' || currentPage === 'gpio') {
+        const gpioKeys = Object.keys(json).filter(k => k.startsWith('GPIO'));
+        if (gpioKeys.length > 0) {
+          setGpioConfig(prev => {
+            if (Object.keys(prev).length > 0) return prev;
+            const newConfig: Record<string, string> = {};
+            gpioKeys.forEach(key => {
+              const pin = key.replace('GPIO', '');
+              const gpioValue = json[key];
+              if (typeof gpioValue === 'object' && gpioValue !== null) {
+                const funcValue = Object.values(gpioValue)[0];
+                newConfig[`gpio${pin}`] = String(funcValue);
+              } else {
+                newConfig[`gpio${pin}`] = String(gpioValue);
+              }
+            });
+            console.log('✅ GPIO Config:', newConfig);
+            return newConfig;
           });
-          console.log('✅ GPIO Config:', newConfig);
-          return newConfig;
-        });
+        }
       }
       
       // Parse Timers response
-      if (json.Timers !== undefined) {
-        console.log('✅ Timers:', json.Timers);
-        if (typeof json.Timers === 'string') {
-          setTimersEnabled(json.Timers === 'ON' || json.Timers === '1');
-        } else if (typeof json.Timers === 'number') {
-          setTimersEnabled(json.Timers === 1);
-        }
-      }
-      
-      // Parse individual Timer response
-      Object.keys(json).forEach(key => {
-        const timerMatch = key.match(/^Timer(\d+)$/);
-        if (timerMatch && json[key]) {
-          const timerNum = timerMatch[1];
-          const timerData = json[key];
-          console.log(`✅ Timer${timerNum}:`, timerData);
-          
-          if (typeof timerData === 'object') {
-            setTimerInputs(prev => ({
-              ...prev,
-              [`timer${timerNum}_enable`]: String(timerData.Enable || 0),
-              [`timer${timerNum}_mode`]: String(timerData.Mode || 0),
-              [`timer${timerNum}_time`]: timerData.Time || '00:00',
-              [`timer${timerNum}_window`]: String(timerData.Window || 0),
-              [`timer${timerNum}_days`]: timerData.Days || '0000000',
-              [`timer${timerNum}_repeat`]: String(timerData.Repeat || 0),
-              [`timer${timerNum}_output`]: String(timerData.Output || 1),
-              [`timer${timerNum}_action`]: String(timerData.Action || 0),
-            }));
+      if (currentPage === 'timers') {
+        if (json.Timers !== undefined) {
+          console.log('✅ Timers:', json.Timers);
+          if (typeof json.Timers === 'string') {
+            setTimersEnabled(json.Timers === 'ON' || json.Timers === '1');
+          } else if (typeof json.Timers === 'number') {
+            setTimersEnabled(json.Timers === 1);
           }
         }
-      });
+        
+        // Parse individual Timer response
+        Object.keys(json).forEach(key => {
+          const timerMatch = key.match(/^Timer(\d+)$/);
+          if (timerMatch && json[key]) {
+            const timerNum = timerMatch[1];
+            const timerData = json[key];
+            console.log(`✅ Timer${timerNum}:`, timerData);
+            
+            if (typeof timerData === 'object') {
+              setTimerInputs(prev => ({
+                ...prev,
+                [`timer${timerNum}_enable`]: String(timerData.Enable || 0),
+                [`timer${timerNum}_mode`]: String(timerData.Mode || 0),
+                [`timer${timerNum}_time`]: timerData.Time || '00:00',
+                [`timer${timerNum}_window`]: String(timerData.Window || 0),
+                [`timer${timerNum}_days`]: timerData.Days || '0000000',
+                [`timer${timerNum}_repeat`]: String(timerData.Repeat || 0),
+                [`timer${timerNum}_output`]: String(timerData.Output || 1),
+                [`timer${timerNum}_action`]: String(timerData.Action || 0),
+              }));
+            }
+          }
+        });
+      }
       
     } catch (e) {
       console.log('⚠️ Not JSON, trying regex...');
       
-      const moduleMatch = payload.match(/"Module":(\d+)/);
-      if (moduleMatch) {
-        console.log('✅ Module ID (regex):', moduleMatch[1]);
-        setCurrentModuleId(prev => prev === moduleMatch[1] ? prev : moduleMatch[1]);
-        setModuleSelect(prev => prev ? prev : moduleMatch[1]);
+      if (currentPage === 'module') {
+        const moduleMatch = payload.match(/"Module":(\d+)/);
+        if (moduleMatch) {
+          console.log('✅ Module ID (regex):', moduleMatch[1]);
+          setCurrentModuleId(prev => prev === moduleMatch[1] ? prev : moduleMatch[1]);
+          setModuleSelect(prev => prev ? prev : moduleMatch[1]);
+        }
+        
+        const moduleObjMatch = payload.match(/"Module":\{"(\d+)":"[^"]+"\}/);
+        if (moduleObjMatch) {
+          console.log('✅ Module ID (object):', moduleObjMatch[1]);
+          setCurrentModuleId(prev => prev === moduleObjMatch[1] ? prev : moduleObjMatch[1]);
+          setModuleSelect(prev => prev ? prev : moduleObjMatch[1]);
+        }
       }
       
-      const moduleObjMatch = payload.match(/"Module":\{"(\d+)":"[^"]+"\}/);
-      if (moduleObjMatch) {
-        console.log('✅ Module ID (object):', moduleObjMatch[1]);
-        setCurrentModuleId(prev => prev === moduleObjMatch[1] ? prev : moduleObjMatch[1]);
-        setModuleSelect(prev => prev ? prev : moduleObjMatch[1]);
-      }
-      
-      const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
-      if (gpioMatches) {
-        setGpioConfig(prev => {
-          if (Object.keys(prev).length > 0) return prev;
-          const newConfig: Record<string, string> = {};
-          gpioMatches.forEach(item => {
-            const match = item.match(/"GPIO(\d+)":(\d+)/);
-            if (match) newConfig[`gpio${match[1]}`] = match[2];
+      if (currentPage === 'module' || currentPage === 'gpio') {
+        const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
+        if (gpioMatches) {
+          setGpioConfig(prev => {
+            if (Object.keys(prev).length > 0) return prev;
+            const newConfig: Record<string, string> = {};
+            gpioMatches.forEach(item => {
+              const match = item.match(/"GPIO(\d+)":(\d+)/);
+              if (match) newConfig[`gpio${match[1]}`] = match[2];
+            });
+            console.log('✅ GPIO Config (regex):', newConfig);
+            return newConfig;
           });
-          console.log('✅ GPIO Config (regex):', newConfig);
-          return newConfig;
-        });
-      }
-      
-      const gpioObjMatches = payload.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/g);
-      if (gpioObjMatches) {
-        setGpioConfig(prev => {
-          if (Object.keys(prev).length > 0) return prev;
-          const newConfig: Record<string, string> = {};
-          gpioObjMatches.forEach(item => {
-            const match = item.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/);
-            if (match) newConfig[`gpio${match[1]}`] = match[2];
+        }
+        
+        const gpioObjMatches = payload.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/g);
+        if (gpioObjMatches) {
+          setGpioConfig(prev => {
+            if (Object.keys(prev).length > 0) return prev;
+            const newConfig: Record<string, string> = {};
+            gpioObjMatches.forEach(item => {
+              const match = item.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/);
+              if (match) newConfig[`gpio${match[1]}`] = match[2];
+            });
+            console.log('✅ GPIO Config (object regex):', newConfig);
+            return newConfig;
           });
-          console.log('✅ GPIO Config (object regex):', newConfig);
-          return newConfig;
-        });
+        }
       }
     }
     
@@ -314,6 +323,7 @@ export function TasmotaConfigModal({
 
   const renderMainMenu = () => {
     console.log('Rendering main menu, deviceInfo:', deviceInfo);
+    try {
     return (
     <div className="space-y-3">
       {/* Device Info Header */}
@@ -377,10 +387,15 @@ export function TasmotaConfigModal({
       />
     </div>
     );
+    } catch (error) {
+      console.error('Error in renderMainMenu:', error);
+      return <div className="text-red-600 p-4">Error loading menu</div>;
+    }
   };
 
   const renderConfiguration = () => {
     console.log('Rendering configuration menu');
+    try {
     return (
     <div className="space-y-3">
       <BackButton onClick={() => setCurrentPage('main')} />
@@ -395,6 +410,10 @@ export function TasmotaConfigModal({
       <MenuItem icon={Timer} label="Configure Timers" onClick={() => setCurrentPage('timers')} />
     </div>
     );
+    } catch (error) {
+      console.error('Error in renderConfiguration:', error);
+      return <div className="text-red-600 p-4">Error loading configuration</div>;
+    }
   };
 
   const renderModule = () => {

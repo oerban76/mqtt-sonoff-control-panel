@@ -5,6 +5,7 @@ import { DeviceCard } from './components/DeviceCard';
 import { SettingsModal } from './components/SettingsModal';
 import { AddDeviceModal } from './components/AddDeviceModal';
 import { TasmotaConfigModal } from './components/TasmotaConfigModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useMqtt } from './hooks/useMqtt';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Device, MqttSettings } from './types';
@@ -128,6 +129,7 @@ export function App() {
   }, [setSettings]);
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header
         isConnected={isConnected}
@@ -271,5 +273,6 @@ export function App() {
         />
       )}
     </div>
+    </ErrorBoundary>
   );
 }
