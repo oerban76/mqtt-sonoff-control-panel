@@ -91,6 +91,9 @@ export function TasmotaConfigModal({
       setModuleSelect('');
       setGpioConfig({});
       setCurrentModuleId('');
+    } else {
+      // Ensure we're on main page when opening
+      setCurrentPage('main');
     }
   }, [isOpen]);
 
@@ -428,9 +431,8 @@ export function TasmotaConfigModal({
 
     const gpioFunctions = GPIO_FUNCTIONS;
 
-    // Filter only active GPIOs (non-zero)
-    const activeGpios = Object.entries(gpioConfig)
-      .filter(([_, value]) => value !== '0')
+    // Show all GPIOs from config, sorted by pin number
+    const allGpios = Object.entries(gpioConfig)
       .sort((a, b) => {
         const pinA = parseInt(a[0].replace('gpio', ''));
         const pinB = parseInt(b[0].replace('gpio', ''));
@@ -457,11 +459,11 @@ export function TasmotaConfigModal({
             </select>
           </div>
 
-          {activeGpios.length > 0 && (
+          {allGpios.length > 0 && (
             <div className="border-t pt-3">
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">Active GPIO Configuration</h4>
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">GPIO Configuration</h4>
               <div className="space-y-2">
-                {activeGpios.map(([key, value]) => {
+                {allGpios.map(([key, value]) => {
                   const pin = key.replace('gpio', '');
                   const currentValue = gpioConfig[key] || value;
                   const funcName = gpioFunctions.find(f => f.id === parseInt(currentValue))?.name || `Unknown (${currentValue})`;
