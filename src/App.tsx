@@ -261,7 +261,7 @@ export function App() {
 
       {configDevice && (
         <TasmotaConfigModal
-          isOpen={!!configDevice}
+          isOpen={true}
           onClose={() => setConfigDevice(null)}
           device={configDevice}
           deviceInfo={deviceStatuses[configDevice.topic]}

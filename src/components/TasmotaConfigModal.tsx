@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   X, Cpu, Wifi, Settings, Info, RefreshCw, Terminal, 
   Zap, Timer, ToggleLeft, Sliders, FileCode, Download, 
@@ -62,6 +62,9 @@ export function TasmotaConfigModal({
     return adjusted.toLocaleTimeString('en-GB', { hour12: false });
   };
 
+  // Memoize device info to prevent unnecessary re-renders
+  const stableDeviceInfo = useMemo(() => deviceInfo, [deviceInfo?.ipAddress, deviceInfo?.isOnline, deviceInfo?.status]);
+
   // Memoized command sender to prevent multiple calls
   const sendCommand = useCallback((cmd: string, payload: string = '') => {
     onCommand(cmd, payload);
@@ -91,6 +94,9 @@ export function TasmotaConfigModal({
       setModuleSelect('');
       setGpioConfig({});
       setCurrentModuleId('');
+      setTimerInputs({});
+      setTimersLoaded(false);
+      moduleLoadedRef.current = false;
     }
   }, [isOpen]);
 
@@ -129,7 +135,7 @@ export function TasmotaConfigModal({
 
   // Parse MQTT messages for module config
   useEffect(() => {
-    if (!lastMessage || !lastMessage.topic.includes(device.topic)) return;
+    if (!isOpen || !lastMessage || !lastMessage.topic.includes(device.topic)) return;
     
     const payload = lastMessage.payload;
     console.log('📨 MQTT:', lastMessage.topic, payload);
@@ -272,15 +278,15 @@ export function TasmotaConfigModal({
       }
     }
     
-    // Update console history only when needed
-    if (isOpen) {
+    // Update console history only when on console page
+    if (currentPage === 'console') {
       const formattedMsg = `${lastMessage.topic}: ${lastMessage.payload}`;
       setConsoleHistory(prev => {
         if (prev.length > 0 && prev[prev.length - 1] === formattedMsg) return prev;
         return [...prev.slice(-50), formattedMsg];
       });
     }
-  }, [lastMessage, device.topic, isOpen]);
+  }, [lastMessage, device.topic, isOpen, currentPage]);
 
   if (!isOpen) return null;
 
@@ -1060,7 +1066,15 @@ export function TasmotaConfigModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={(e) => {
+        // Prevent closing when clicking inside modal
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-4 flex items-center justify-between">
@@ -1074,7 +1088,10 @@ export function TasmotaConfigModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="p-2 hover:bg-white/20 rounded-xl transition-colors"
           >
             <X className="w-5 h-5 text-white" />
