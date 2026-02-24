@@ -42,6 +42,7 @@ export function TasmotaConfigModal({
   const [timeOffset, setTimeOffset] = useState(0);
   const consoleRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef(false);
+  const moduleLoadedRef = useRef(false);
   
   // Local clock that updates every second
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -84,19 +85,27 @@ export function TasmotaConfigModal({
     if (!isOpen) {
       setCurrentPage('main');
       setConsoleHistory([]);
+      setModuleSelect('');
+      setGpioConfig({});
+      setCurrentModuleId('');
     }
   }, [isOpen]);
 
   // Load module config when entering module page
   useEffect(() => {
-    if (currentPage === 'module' && isConnected) {
+    if (currentPage === 'module' && isConnected && !moduleLoadedRef.current) {
       console.log('Loading module config...');
+      moduleLoadedRef.current = true;
       setTimeout(() => {
         sendCommand('Module', '');
       }, 100);
       setTimeout(() => {
         sendCommand('GPIO', '');
       }, 300);
+    }
+    // Reset flag when leaving module page
+    if (currentPage !== 'module') {
+      moduleLoadedRef.current = false;
     }
   }, [currentPage, isConnected, sendCommand]);
 
@@ -141,24 +150,27 @@ export function TasmotaConfigModal({
         }
       }
       
-      // Parse Module response
-      if (json.Module !== undefined) {
+      // Parse Module response (only on module page)
+      if (json.Module !== undefined && currentPage === 'module') {
         const moduleId = String(json.Module);
         console.log('✅ Module ID:', moduleId);
         setCurrentModuleId(moduleId);
-        setModuleSelect(prev => prev || moduleId);
+        if (!moduleSelect) {
+          setModuleSelect(moduleId);
+        }
       }
       
-      // Parse GPIO response
+      // Parse GPIO response (only on module page)
       const gpioKeys = Object.keys(json).filter(k => k.startsWith('GPIO'));
-      if (gpioKeys.length > 0) {
+      if (gpioKeys.length > 0 && currentPage === 'module') {
         const newConfig: Record<string, string> = {};
         gpioKeys.forEach(key => {
           const pin = key.replace('GPIO', '');
           newConfig[`gpio${pin}`] = String(json[key]);
         });
         console.log('✅ GPIO Config:', newConfig);
-        setGpioConfig(prev => ({ ...prev, ...newConfig }));
+        // Only set if gpioConfig is empty
+        setGpioConfig(prev => Object.keys(prev).length === 0 ? newConfig : prev);
       }
       
       // Parse Timers response
@@ -201,21 +213,23 @@ export function TasmotaConfigModal({
       
       // Fallback regex parsing
       const moduleMatch = payload.match(/"Module":(\d+)/);
-      if (moduleMatch) {
+      if (moduleMatch && currentPage === 'module') {
         console.log('✅ Module ID (regex):', moduleMatch[1]);
         setCurrentModuleId(moduleMatch[1]);
-        setModuleSelect(prev => prev || moduleMatch[1]);
+        if (!moduleSelect) {
+          setModuleSelect(moduleMatch[1]);
+        }
       }
       
       const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
-      if (gpioMatches) {
+      if (gpioMatches && currentPage === 'module') {
         const newConfig: Record<string, string> = {};
         gpioMatches.forEach(item => {
           const match = item.match(/"GPIO(\d+)":(\d+)/);
           if (match) newConfig[`gpio${match[1]}`] = match[2];
         });
         console.log('✅ GPIO Config (regex):', newConfig);
-        setGpioConfig(prev => ({ ...prev, ...newConfig }));
+        setGpioConfig(prev => Object.keys(prev).length === 0 ? newConfig : prev);
       }
     }
     
@@ -392,8 +406,12 @@ export function TasmotaConfigModal({
             <label className="text-sm font-medium text-gray-700 block mb-2">Module type</label>
             <select 
               className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={currentModuleId || moduleSelect || ''}
-              onChange={(e) => setModuleSelect(e.target.value)}
+              value={moduleSelect || currentModuleId || ''}
+              onChange={(e) => {
+                setModuleSelect(e.target.value);
+                // Clear GPIO config when module changes
+                setGpioConfig({});
+              }}
             >
               <option value="">-- Select module --</option>
               {modules.map(m => (
@@ -435,6 +453,11 @@ export function TasmotaConfigModal({
           onClick={() => {
             if (moduleSelect && moduleSelect !== currentModuleId) {
               sendCommand('Module', moduleSelect);
+              // Reload GPIO after module change
+              setTimeout(() => {
+                sendCommand('GPIO', '');
+                moduleLoadedRef.current = false;
+              }, 1000);
             }
             Object.keys(gpioConfig).forEach(key => {
               const pin = key.replace('gpio', '');
