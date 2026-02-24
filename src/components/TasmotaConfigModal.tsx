@@ -40,6 +40,9 @@ export function TasmotaConfigModal({
   const [timersEnabled, setTimersEnabled] = useState(true);
   const [deviceTime, setDeviceTime] = useState<Date | null>(null);
   const [timeOffset, setTimeOffset] = useState(0);
+  const consoleRef = useRef<HTMLDivElement>(null);
+  const initialLoadRef = useRef(false);
+  
   // Local clock that updates every second
   const [currentTime, setCurrentTime] = useState(new Date());
   
