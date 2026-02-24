@@ -141,7 +141,6 @@ export function TasmotaConfigModal({
       // Parse Time from device
       if (json.Time) {
         try {
-          // Tasmota sends time like "2024-01-15T10:30:45"
           const deviceDateTime = new Date(json.Time);
           const localDateTime = new Date();
           const offset = deviceDateTime.getTime() - localDateTime.getTime();
@@ -153,18 +152,15 @@ export function TasmotaConfigModal({
         }
       }
       
-      // Parse Module response (only on module page or initial load)
+      // Parse Module response
       if (json.Module !== undefined) {
-        // Handle both formats: {"Module":1} and {"Module":{"1":"Sonoff Basic"}}
         let moduleId = '';
         if (typeof json.Module === 'object' && json.Module !== null) {
-          // Format: {"Module":{"1":"Sonoff Basic"}}
           const moduleKey = Object.keys(json.Module)[0];
           if (moduleKey) {
             moduleId = moduleKey;
           }
         } else {
-          // Format: {"Module":1}
           moduleId = String(json.Module);
         }
         
@@ -180,32 +176,27 @@ export function TasmotaConfigModal({
       // Parse GPIO response
       const gpioKeys = Object.keys(json).filter(k => k.startsWith('GPIO'));
       if (gpioKeys.length > 0) {
-        const newConfig: Record<string, string> = {};
-        gpioKeys.forEach(key => {
-          const pin = key.replace('GPIO', '');
-          const gpioValue = json[key];
-          
-          // Handle both formats:
-          // Old: {"GPIO1":0}
-          // New: {"GPIO1":{"None":0}} or {"GPIO2":{"Relay_i1":256}}
-          if (typeof gpioValue === 'object' && gpioValue !== null) {
-            // New format: get the value from the object
-            const funcValue = Object.values(gpioValue)[0];
-            newConfig[`gpio${pin}`] = String(funcValue);
-          } else {
-            // Old format: direct value
-            newConfig[`gpio${pin}`] = String(gpioValue);
-          }
+        setGpioConfig(prev => {
+          if (Object.keys(prev).length > 0) return prev;
+          const newConfig: Record<string, string> = {};
+          gpioKeys.forEach(key => {
+            const pin = key.replace('GPIO', '');
+            const gpioValue = json[key];
+            if (typeof gpioValue === 'object' && gpioValue !== null) {
+              const funcValue = Object.values(gpioValue)[0];
+              newConfig[`gpio${pin}`] = String(funcValue);
+            } else {
+              newConfig[`gpio${pin}`] = String(gpioValue);
+            }
+          });
+          console.log('✅ GPIO Config:', newConfig);
+          return newConfig;
         });
-        console.log('✅ GPIO Config:', newConfig);
-        // Only set if gpioConfig is empty
-        setGpioConfig(prev => Object.keys(prev).length === 0 ? newConfig : prev);
       }
       
       // Parse Timers response
       if (json.Timers !== undefined) {
         console.log('✅ Timers:', json.Timers);
-        // Parse global timers status (ON=1, OFF=0)
         if (typeof json.Timers === 'string') {
           setTimersEnabled(json.Timers === 'ON' || json.Timers === '1');
         } else if (typeof json.Timers === 'number') {
@@ -240,7 +231,6 @@ export function TasmotaConfigModal({
     } catch (e) {
       console.log('⚠️ Not JSON, trying regex...');
       
-      // Fallback regex parsing
       const moduleMatch = payload.match(/"Module":(\d+)/);
       if (moduleMatch) {
         console.log('✅ Module ID (regex):', moduleMatch[1]);
@@ -250,7 +240,6 @@ export function TasmotaConfigModal({
         }
       }
       
-      // Parse Module object format: {"Module":{"1":"Sonoff Basic"}}
       const moduleObjMatch = payload.match(/"Module":\{"(\d+)":"[^"]+"\}/);
       if (moduleObjMatch) {
         console.log('✅ Module ID (object):', moduleObjMatch[1]);
@@ -262,30 +251,35 @@ export function TasmotaConfigModal({
       
       const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
       if (gpioMatches) {
-        const newConfig: Record<string, string> = {};
-        gpioMatches.forEach(item => {
-          const match = item.match(/"GPIO(\d+)":(\d+)/);
-          if (match) newConfig[`gpio${match[1]}`] = match[2];
+        setGpioConfig(prev => {
+          if (Object.keys(prev).length > 0) return prev;
+          const newConfig: Record<string, string> = {};
+          gpioMatches.forEach(item => {
+            const match = item.match(/"GPIO(\d+)":(\d+)/);
+            if (match) newConfig[`gpio${match[1]}`] = match[2];
+          });
+          console.log('✅ GPIO Config (regex):', newConfig);
+          return newConfig;
         });
-        console.log('✅ GPIO Config (regex):', newConfig);
-        setGpioConfig(prev => Object.keys(prev).length === 0 ? newConfig : prev);
       }
       
-      // Parse new GPIO format: {"GPIO1":{"None":0}}
       const gpioObjMatches = payload.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/g);
       if (gpioObjMatches) {
-        const newConfig: Record<string, string> = {};
-        gpioObjMatches.forEach(item => {
-          const match = item.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/);
-          if (match) newConfig[`gpio${match[1]}`] = match[2];
+        setGpioConfig(prev => {
+          if (Object.keys(prev).length > 0) return prev;
+          const newConfig: Record<string, string> = {};
+          gpioObjMatches.forEach(item => {
+            const match = item.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/);
+            if (match) newConfig[`gpio${match[1]}`] = match[2];
+          });
+          console.log('✅ GPIO Config (object regex):', newConfig);
+          return newConfig;
         });
-        console.log('✅ GPIO Config (object regex):', newConfig);
-        setGpioConfig(prev => Object.keys(prev).length === 0 ? newConfig : prev);
       }
     }
     
     // Update console history
-    if (isOpen && currentPage === 'console') {
+    if (isOpen) {
       const formattedMsg = `${lastMessage.topic}: ${lastMessage.payload}`;
       setConsoleHistory(prev => {
         if (prev.length > 0 && prev[prev.length - 1] === formattedMsg) return prev;
@@ -297,7 +291,7 @@ export function TasmotaConfigModal({
         }
       }, 50);
     }
-  }, [lastMessage, device.topic, isOpen]);
+  }, [lastMessage, device.topic, isOpen, moduleSelect]);
 
   if (!isOpen) return null;
 
@@ -1042,20 +1036,37 @@ export function TasmotaConfigModal({
 
   const renderPage = () => {
     console.log('Current page:', currentPage);
-    switch (currentPage) {
-      case 'main': return renderMainMenu();
-      case 'configuration': return renderConfiguration();
-      case 'module': return renderModule();
-      case 'wifi': return renderWifi();
-      case 'logging': return renderLogging();
-      case 'other': return renderOther();
-      case 'template': return renderTemplate();
-      case 'gpio': return renderGpio();
-      case 'timers': return renderTimers();
-      case 'console': return renderConsole();
-      case 'information': return renderInformation();
-      case 'firmware': return renderFirmware();
-      default: return renderMainMenu();
+    try {
+      switch (currentPage) {
+        case 'main': return renderMainMenu();
+        case 'configuration': return renderConfiguration();
+        case 'module': return renderModule();
+        case 'wifi': return renderWifi();
+        case 'logging': return renderLogging();
+        case 'other': return renderOther();
+        case 'template': return renderTemplate();
+        case 'gpio': return renderGpio();
+        case 'timers': return renderTimers();
+        case 'console': return renderConsole();
+        case 'information': return renderInformation();
+        case 'firmware': return renderFirmware();
+        default: 
+          console.log('Unknown page, rendering main menu');
+          return renderMainMenu();
+      }
+    } catch (error) {
+      console.error('Error rendering page:', error);
+      return (
+        <div className="text-center py-8">
+          <p className="text-red-600">Error loading page</p>
+          <button
+            onClick={() => setCurrentPage('main')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Back to Main Menu
+          </button>
+        </div>
+      );
     }
   };
 
@@ -1082,7 +1093,7 @@ export function TasmotaConfigModal({
         </div>
 
         {/* Content */}
-        <div key={currentPage} className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
           {!isConnected ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
