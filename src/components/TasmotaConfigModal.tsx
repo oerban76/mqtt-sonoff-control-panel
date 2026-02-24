@@ -536,7 +536,7 @@ export function TasmotaConfigModal({
       <div className="bg-gray-50 p-4 rounded-xl space-y-3">
         <div>
           <label className="block text-sm font-medium text-gray-500">Current Network</label>
-          <p className="text-gray-800 font-medium">{deviceInfo?.ssid || 'Click Get WiFi'}</p>
+          <p className="text-gray-800 font-medium">{deviceInfo?.ssid ? String(deviceInfo.ssid) : 'Click Get WiFi'}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-500">Signal Strength (RSSI)</label>
@@ -556,15 +556,15 @@ export function TasmotaConfigModal({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-500">IP Address</label>
-          <p className="text-gray-800 font-mono">{deviceInfo?.ipAddress || '-'}</p>
+          <p className="text-gray-800 font-mono">{deviceInfo?.ipAddress ? String(deviceInfo.ipAddress) : '-'}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-500">Hostname</label>
-          <p className="text-gray-800 font-mono">{deviceInfo?.hostname || '-'}</p>
+          <p className="text-gray-800 font-mono">{deviceInfo?.hostname ? String(deviceInfo.hostname) : '-'}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-500">MAC Address</label>
-          <p className="text-gray-800 font-mono">{deviceInfo?.mac || '-'}</p>
+          <p className="text-gray-800 font-mono">{deviceInfo?.mac ? String(deviceInfo.mac) : '-'}</p>
         </div>
       </div>
 
@@ -996,25 +996,25 @@ export function TasmotaConfigModal({
         <InfoRow label="IP Address" value={deviceInfo?.ipAddress} />
         <InfoRow label="Hostname" value={deviceInfo?.hostname} />
         <InfoRow label="MAC Address" value={deviceInfo?.mac} />
-        <InfoRow label="Module" value={deviceInfo?.module} />
-        <InfoRow label="Firmware Version" value={deviceInfo?.version} />
-        <InfoRow label="Uptime" value={deviceInfo?.uptime} />
-        <InfoRow label="WiFi SSID" value={deviceInfo?.ssid} />
-        <InfoRow label="WiFi Signal" value={deviceInfo?.rssi ? `${deviceInfo.rssi}%` : undefined} />
-        <InfoRow label="Free Memory" value={deviceInfo?.freeMemory ? `${deviceInfo.freeMemory} KB` : undefined} />
-        <InfoRow label="MQTT Messages" value={deviceInfo?.mqttCount?.toString()} />
+        <InfoRow label="Module" value={deviceInfo?.module ? String(deviceInfo.module) : undefined} />
+        <InfoRow label="Firmware Version" value={deviceInfo?.version ? String(deviceInfo.version) : undefined} />
+        <InfoRow label="Uptime" value={deviceInfo?.uptime ? String(deviceInfo.uptime) : undefined} />
+        <InfoRow label="WiFi SSID" value={deviceInfo?.ssid ? String(deviceInfo.ssid) : undefined} />
+        <InfoRow label="WiFi Signal" value={deviceInfo?.rssi ? `${String(deviceInfo.rssi)}%` : undefined} />
+        <InfoRow label="Free Memory" value={deviceInfo?.freeMemory ? `${String(deviceInfo.freeMemory)} KB` : undefined} />
+        <InfoRow label="MQTT Messages" value={deviceInfo?.mqttCount ? String(deviceInfo.mqttCount) : undefined} />
         
         {deviceInfo?.power !== undefined && (
-          <InfoRow label="Power" value={`${deviceInfo.power} W`} />
+          <InfoRow label="Power" value={`${String(deviceInfo.power)} W`} />
         )}
         {deviceInfo?.voltage !== undefined && (
-          <InfoRow label="Voltage" value={`${deviceInfo.voltage} V`} />
+          <InfoRow label="Voltage" value={`${String(deviceInfo.voltage)} V`} />
         )}
         {deviceInfo?.temperature !== undefined && (
-          <InfoRow label="Temperature" value={`${deviceInfo.temperature} °C`} />
+          <InfoRow label="Temperature" value={`${String(deviceInfo.temperature)} °C`} />
         )}
         {deviceInfo?.humidity !== undefined && (
-          <InfoRow label="Humidity" value={`${deviceInfo.humidity} %`} />
+          <InfoRow label="Humidity" value={`${String(deviceInfo.humidity)} %`} />
         )}
       </div>
 
@@ -1030,7 +1030,7 @@ export function TasmotaConfigModal({
       <div className="bg-gray-50 p-4 rounded-xl">
         <div className="mb-3">
           <label className="block text-sm font-medium text-gray-500">Current Version</label>
-          <p className="text-gray-800 font-mono">{deviceInfo?.version || 'Click Get Version'}</p>
+          <p className="text-gray-800 font-mono">{deviceInfo?.version ? String(deviceInfo.version) : 'Click Get Version'}</p>
         </div>
       </div>
 
@@ -1205,7 +1205,7 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
     <div className="flex justify-between items-center py-2 border-b border-gray-100">
       <span className="text-sm text-gray-500">{label}</span>
       <span className="text-sm font-medium text-gray-800 font-mono">
-        {value || <span className="text-gray-400">-</span>}
+        {value ? String(value) : <span className="text-gray-400">-</span>}
       </span>
     </div>
   );
