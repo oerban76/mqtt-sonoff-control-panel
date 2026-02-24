@@ -219,20 +219,36 @@ export function TasmotaConfigModal({
       <BackButton onClick={() => setCurrentPage('configuration')} />
       <h3 className="text-lg font-bold text-gray-800">Configure Module</h3>
       
-      <div className="bg-gray-50 p-4 rounded-xl">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Module Type</label>
-        <p className="text-gray-600 mb-3">{deviceInfo?.module || 'Click Get Module'}</p>
-        
-        <div className="space-y-2">
-          <CommandButton label="Get Module" onClick={() => sendCommand('Module', '')} />
-          <CommandButton label="Get GPIO" onClick={() => sendCommand('GPIO', '')} />
-          <CommandButton label="Get Template" onClick={() => sendCommand('Template', '')} />
+      <div className="bg-gray-50 p-4 rounded-xl space-y-3">
+        <div>
+          <label className="text-sm font-medium text-gray-700">Module Type</label>
+          <p className="text-gray-800 font-mono text-sm mt-1">{deviceInfo?.module || 'Unknown'}</p>
         </div>
+        <div>
+          <label className="text-sm font-medium text-gray-700">Module Number</label>
+          <input
+            type="number"
+            placeholder="0-255"
+            className="w-full px-3 py-2 border rounded-lg text-sm mt-1"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const val = (e.target as HTMLInputElement).value;
+                if (val) sendCommand('Module', val);
+              }
+            }}
+          />
+          <p className="text-xs text-gray-500 mt-1">0=Generic, 18=Sonoff Basic, etc.</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <CommandButton label="Get Module Info" onClick={() => sendCommand('Module', '')} />
+        <CommandButton label="Get Modules List" onClick={() => sendCommand('Modules', '')} />
       </div>
 
       <div className="bg-amber-50 p-4 rounded-xl">
         <p className="text-sm text-amber-700">
-          <strong>Note:</strong> For safety, module configuration changes should be done through the device's local web interface.
+          <strong>Warning:</strong> Changing module type may require device restart.
         </p>
       </div>
     </div>
@@ -308,14 +324,64 @@ export function TasmotaConfigModal({
       <BackButton onClick={() => setCurrentPage('configuration')} />
       <h3 className="text-lg font-bold text-gray-800">Configure Other</h3>
       
+      <div className="space-y-3">
+        <div className="bg-white border rounded-xl p-3">
+          <label className="text-sm font-medium text-gray-700">Device Name</label>
+          <div className="flex gap-2 mt-1">
+            <input type="text" placeholder="Device Name" className="flex-1 px-3 py-2 border rounded-lg text-sm" id="deviceName" />
+            <button onClick={() => {
+              const val = (document.getElementById('deviceName') as HTMLInputElement)?.value;
+              if (val) sendCommand('DeviceName', val);
+            }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm">Set</button>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-xl p-3">
+          <label className="text-sm font-medium text-gray-700">Friendly Name</label>
+          <div className="flex gap-2 mt-1">
+            <input type="text" placeholder="Friendly Name" className="flex-1 px-3 py-2 border rounded-lg text-sm" id="friendlyName" />
+            <button onClick={() => {
+              const val = (document.getElementById('friendlyName') as HTMLInputElement)?.value;
+              if (val) sendCommand('FriendlyName', val);
+            }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm">Set</button>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-xl p-3">
+          <label className="text-sm font-medium text-gray-700">Emulation</label>
+          <select className="w-full px-3 py-2 border rounded-lg text-sm mt-1" onChange={(e) => sendCommand('Emulation', e.target.value)}>
+            <option value="">Select...</option>
+            <option value="0">None</option>
+            <option value="1">Belkin WeMo</option>
+            <option value="2">Hue Bridge</option>
+          </select>
+        </div>
+
+        <div className="bg-white border rounded-xl p-3">
+          <label className="text-sm font-medium text-gray-700">Timezone</label>
+          <div className="flex gap-2 mt-1">
+            <input type="number" placeholder="-13 to +13" className="flex-1 px-3 py-2 border rounded-lg text-sm" id="timezone" />
+            <button onClick={() => {
+              const val = (document.getElementById('timezone') as HTMLInputElement)?.value;
+              if (val) sendCommand('Timezone', val);
+            }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm">Set</button>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-xl p-3">
+          <label className="text-sm font-medium text-gray-700">NTP Server</label>
+          <div className="flex gap-2 mt-1">
+            <input type="text" placeholder="pool.ntp.org" className="flex-1 px-3 py-2 border rounded-lg text-sm" id="ntpServer" />
+            <button onClick={() => {
+              const val = (document.getElementById('ntpServer') as HTMLInputElement)?.value;
+              if (val) sendCommand('NtpServer', val);
+            }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm">Set</button>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-2">
-        <CommandButton label="Get Device Name" onClick={() => sendCommand('DeviceName', '')} />
-        <CommandButton label="Get Friendly Name" onClick={() => sendCommand('FriendlyName', '')} />
-        <CommandButton label="Get Web Password Status" onClick={() => sendCommand('WebPassword', '')} />
-        <CommandButton label="Get Emulation Mode" onClick={() => sendCommand('Emulation', '')} />
-        <CommandButton label="Get Timezone" onClick={() => sendCommand('Timezone', '')} />
-        <CommandButton label="Get Latitude" onClick={() => sendCommand('Latitude', '')} />
-        <CommandButton label="Get Longitude" onClick={() => sendCommand('Longitude', '')} />
+        <CommandButton label="Get All Settings" onClick={() => sendCommand('STATUS', '0')} />
       </div>
     </div>
   );
@@ -325,15 +391,33 @@ export function TasmotaConfigModal({
       <BackButton onClick={() => setCurrentPage('configuration')} />
       <h3 className="text-lg font-bold text-gray-800">Configure Template</h3>
       
+      <div className="bg-white border rounded-xl p-3">
+        <label className="text-sm font-medium text-gray-700">Template JSON</label>
+        <textarea
+          placeholder='{"NAME":"...","GPIO":[...],"FLAG":0,"BASE":0}'
+          className="w-full px-3 py-2 border rounded-lg text-xs font-mono mt-2"
+          rows={6}
+          id="templateJson"
+        />
+        <button
+          onClick={() => {
+            const val = (document.getElementById('templateJson') as HTMLTextAreaElement)?.value;
+            if (val) sendCommand('Template', val);
+          }}
+          className="w-full mt-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"
+        >
+          Apply Template
+        </button>
+      </div>
+
       <div className="space-y-2">
         <CommandButton label="Get Current Template" onClick={() => sendCommand('Template', '')} />
-        <CommandButton label="Get GPIO Configuration" onClick={() => sendCommand('GPIO', '')} />
-        <CommandButton label="Get GPIO0 State" onClick={() => sendCommand('GPIO0', '')} />
+        <CommandButton label="Activate Template" onClick={() => sendCommand('Module', '0')} />
       </div>
 
       <div className="bg-blue-50 p-4 rounded-xl">
         <p className="text-sm text-blue-700">
-          Templates define the GPIO configuration for your device. Use the console to apply custom templates.
+          <strong>Info:</strong> After applying template, set Module to 0 to activate it.
         </p>
       </div>
     </div>
@@ -344,18 +428,44 @@ export function TasmotaConfigModal({
       <BackButton onClick={() => setCurrentPage('configuration')} />
       <h3 className="text-lg font-bold text-gray-800">Configure GPIO</h3>
       
+      <div className="bg-white border rounded-xl p-3">
+        <label className="text-sm font-medium text-gray-700">Set GPIO Function</label>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div>
+            <label className="text-xs text-gray-500">GPIO Pin</label>
+            <input type="number" placeholder="0-16" className="w-full px-2 py-1 border rounded text-sm" id="gpioPin" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Function</label>
+            <input type="number" placeholder="0-255" className="w-full px-2 py-1 border rounded text-sm" id="gpioFunc" />
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            const pin = (document.getElementById('gpioPin') as HTMLInputElement)?.value;
+            const func = (document.getElementById('gpioFunc') as HTMLInputElement)?.value;
+            if (pin && func) sendCommand(`GPIO${pin}`, func);
+          }}
+          className="w-full mt-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"
+        >
+          Set GPIO
+        </button>
+      </div>
+
       <div className="space-y-2">
-        <CommandButton label="Get All GPIO" onClick={() => sendCommand('GPIO', 'ALL')} />
-        <CommandButton label="Get GPIO Configuration" onClick={() => sendCommand('GPIO', '')} />
-        <CommandButton label="Get GPIOS" onClick={() => sendCommand('GPIOS', '')} />
+        <CommandButton label="Get GPIO Config" onClick={() => sendCommand('GPIO', '')} />
+        <CommandButton label="Get Available Functions" onClick={() => sendCommand('GPIOS', '')} />
+        <CommandButton label="Reset All GPIO" onClick={() => sendCommand('GPIO', '255')} />
       </div>
 
       <div className="bg-gray-50 p-4 rounded-xl">
-        <h4 className="font-medium text-gray-700 mb-2">GPIO Commands</h4>
-        <ul className="text-sm text-gray-600 space-y-1">
-          <li>• GPIO - Show current GPIO configuration</li>
-          <li>• GPIO255 - Reset all GPIOs to default</li>
-          <li>• GPIOS - Show available GPIO components</li>
+        <h4 className="font-medium text-gray-700 mb-2">Common GPIO Functions</h4>
+        <ul className="text-xs text-gray-600 space-y-1">
+          <li>• 0 = None</li>
+          <li>• 1 = Button</li>
+          <li>• 21 = Switch</li>
+          <li>• 52 = Relay</li>
+          <li>• 56 = LED</li>
         </ul>
       </div>
     </div>
