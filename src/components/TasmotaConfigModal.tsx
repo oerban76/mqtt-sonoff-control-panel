@@ -77,32 +77,58 @@ export function TasmotaConfigModal({
   // Parse MQTT messages for module config
   useEffect(() => {
     if (lastMessage && lastMessage.topic.includes(device.topic)) {
+      const payload = lastMessage.payload;
+      console.log('MQTT Message:', lastMessage.topic, payload);
+      
       try {
-        const payload = lastMessage.payload;
+        // Try parse as JSON first
+        const json = JSON.parse(payload);
         
         // Parse Module response
-        if (lastMessage.topic.includes('RESULT') && payload.includes('Module')) {
-          const match = payload.match(/"Module":(\d+)/);
-          if (match) {
-            setCurrentModuleId(match[1]);
-            setModuleSelect(match[1]);
-          }
+        if (json.Module !== undefined) {
+          console.log('Module ID:', json.Module);
+          setCurrentModuleId(String(json.Module));
+          setModuleSelect(String(json.Module));
         }
         
-        // Parse GPIO response
-        if (lastMessage.topic.includes('RESULT') && payload.includes('GPIO')) {
-          const gpioMatch = payload.match(/"GPIO(\d+)":(\d+)/g);
-          if (gpioMatch) {
-            const newConfig: Record<string, string> = {};
-            gpioMatch.forEach(item => {
-              const [, pin, func] = item.match(/"GPIO(\d+)":(\d+)/) || [];
-              if (pin && func) newConfig[`gpio${pin}`] = func;
-            });
-            setGpioConfig(newConfig);
-          }
+        // Parse GPIO response - handle both formats
+        if (json.GPIO || json.GPIOs) {
+          const gpioData = json.GPIO || json.GPIOs || {};
+          console.log('GPIO Data:', gpioData);
+          const newConfig: Record<string, string> = {};
+          
+          Object.keys(gpioData).forEach(key => {
+            const pinMatch = key.match(/^GPIO(\d+)$/);
+            if (pinMatch) {
+              const pin = pinMatch[1];
+              newConfig[`gpio${pin}`] = String(gpioData[key]);
+            }
+          });
+          
+          console.log('Parsed GPIO Config:', newConfig);
+          setGpioConfig(newConfig);
         }
       } catch (e) {
-        // Ignore parse errors
+        // Not JSON, try regex parsing
+        const moduleMatch = payload.match(/"Module":(\d+)/);
+        if (moduleMatch) {
+          console.log('Module ID (regex):', moduleMatch[1]);
+          setCurrentModuleId(moduleMatch[1]);
+          setModuleSelect(moduleMatch[1]);
+        }
+        
+        const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
+        if (gpioMatches) {
+          const newConfig: Record<string, string> = {};
+          gpioMatches.forEach(item => {
+            const match = item.match(/"GPIO(\d+)":(\d+)/);
+            if (match) {
+              newConfig[`gpio${match[1]}`] = match[2];
+            }
+          });
+          console.log('Parsed GPIO Config (regex):', newConfig);
+          setGpioConfig(newConfig);
+        }
       }
     }
     
@@ -300,7 +326,7 @@ export function TasmotaConfigModal({
             <label className="text-sm font-medium text-gray-700 block mb-2">Module type</label>
             <select 
               className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={moduleSelect || currentModuleId}
+              value={moduleSelect || currentModuleId || ''}
               onChange={(e) => setModuleSelect(e.target.value)}
             >
               <option value="">-- Select module --</option>
