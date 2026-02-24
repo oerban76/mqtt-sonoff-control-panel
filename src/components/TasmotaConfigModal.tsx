@@ -36,6 +36,7 @@ export function TasmotaConfigModal({
   const [gpioConfig, setGpioConfig] = useState<Record<string, string>>({});
   const [currentModuleId, setCurrentModuleId] = useState('');
   const [timerInputs, setTimerInputs] = useState<Record<string, string>>({});
+  const [timersLoaded, setTimersLoaded] = useState(false);
   const consoleRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef(false);
 
@@ -81,13 +82,18 @@ export function TasmotaConfigModal({
 
   // Load timer config when entering timers page
   useEffect(() => {
-    if (currentPage === 'timers' && isConnected) {
+    if (currentPage === 'timers' && isConnected && !timersLoaded) {
       console.log('Loading timers config...');
+      setTimersLoaded(true);
       setTimeout(() => {
         sendCommand('Timers', '');
       }, 100);
     }
-  }, [currentPage, isConnected, sendCommand]);
+    // Reset flag when leaving timers page
+    if (currentPage !== 'timers') {
+      setTimersLoaded(false);
+    }
+  }, [currentPage, isConnected, timersLoaded, sendCommand]);
 
   // Parse MQTT messages for module config
   useEffect(() => {
