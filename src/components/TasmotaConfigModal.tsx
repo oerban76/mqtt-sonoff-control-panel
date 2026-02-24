@@ -37,6 +37,7 @@ export function TasmotaConfigModal({
   const [currentModuleId, setCurrentModuleId] = useState('');
   const [timerInputs, setTimerInputs] = useState<Record<string, string>>({});
   const [timersLoaded, setTimersLoaded] = useState(false);
+  const [timersEnabled, setTimersEnabled] = useState(true);
   const consoleRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef(false);
 
@@ -644,23 +645,20 @@ export function TasmotaConfigModal({
       <BackButton onClick={() => setCurrentPage('configuration')} />
       <h3 className="text-lg font-bold text-gray-800">Configure Timers</h3>
       
-      <div className="bg-gray-50 p-4 rounded-xl space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-700">Timers Status</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => sendCommand('Timers', '0')}
-              className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
-            >
-              Disable All
-            </button>
-            <button
-              onClick={() => sendCommand('Timers', '1')}
-              className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200"
-            >
-              Enable All
-            </button>
-          </div>
+      <div className="bg-gray-50 p-4 rounded-xl">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={timersEnabled}
+              onChange={(e) => {
+                setTimersEnabled(e.target.checked);
+                sendCommand('Timers', e.target.checked ? '1' : '0');
+              }}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="font-medium text-gray-700">Timers Status</span>
+          </label>
         </div>
       </div>
 
