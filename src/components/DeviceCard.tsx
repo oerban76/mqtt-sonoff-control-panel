@@ -102,7 +102,7 @@ export function DeviceCard({ device, status, onToggle, onCommand, onDelete, onEd
           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full">
             <Clock className="w-3 h-3 text-blue-600" />
             <span className="text-xs font-medium text-blue-700 font-mono">
-              {currentTime.toLocaleTimeString()}
+              {currentTime.toLocaleTimeString('en-GB', { hour12: false })}
             </span>
           </div>
         </div>
