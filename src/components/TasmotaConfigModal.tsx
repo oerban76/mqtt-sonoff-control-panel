@@ -323,7 +323,9 @@ export function TasmotaConfigModal({
     }
   };
 
-  const renderMainMenu = () => (
+  const renderMainMenu = () => {
+    console.log('Rendering main menu, deviceInfo:', deviceInfo);
+    return (
     <div className="space-y-3">
       {/* Device Info Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-xl mb-4">
@@ -385,9 +387,12 @@ export function TasmotaConfigModal({
         onClick={() => setCurrentPage('firmware')}
       />
     </div>
-  );
+    );
+  };
 
-  const renderConfiguration = () => (
+  const renderConfiguration = () => {
+    console.log('Rendering configuration menu');
+    return (
     <div className="space-y-3">
       <BackButton onClick={() => setCurrentPage('main')} />
       <h3 className="text-lg font-bold text-gray-800 mb-4">Configuration</h3>
@@ -400,7 +405,8 @@ export function TasmotaConfigModal({
       <MenuItem icon={ToggleLeft} label="Configure GPIO" onClick={() => setCurrentPage('gpio')} />
       <MenuItem icon={Timer} label="Configure Timers" onClick={() => setCurrentPage('timers')} />
     </div>
-  );
+    );
+  };
 
   const renderModule = () => {
     const modules = [
