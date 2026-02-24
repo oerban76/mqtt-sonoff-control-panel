@@ -242,49 +242,28 @@ export function TasmotaConfigModal({
     return (
       <div className="space-y-4">
         <BackButton onClick={() => setCurrentPage('configuration')} />
-        <h3 className="text-lg font-bold text-gray-800">Configure Module</h3>
+        <h3 className="text-lg font-bold text-gray-800">Module parameters</h3>
         
-        <div className="bg-gray-50 p-4 rounded-xl space-y-3">
-          <div>
-            <label className="text-sm font-medium text-gray-700">Current Module</label>
-            <p className="text-gray-800 font-mono text-sm mt-1">{deviceInfo?.module || 'Unknown'}</p>
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-2">Module Type</label>
-            <select 
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={moduleSelect}
-              onChange={(e) => setModuleSelect(e.target.value)}
-            >
-              <option value="">Select module...</option>
-              {modules.map(m => (
-                <option key={m.id} value={m.id}>{m.id} - {m.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <button
-            onClick={() => {
-              if (moduleSelect) {
-                sendCommand('Module', moduleSelect);
-                setModuleSelect('');
-              }
+        <div className="bg-white border rounded-xl p-4">
+          <label className="text-sm font-medium text-gray-700 block mb-2">Module type</label>
+          <select 
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            value={moduleSelect}
+            onChange={(e) => {
+              setModuleSelect(e.target.value);
+              if (e.target.value) sendCommand('Module', e.target.value);
             }}
-            disabled={!moduleSelect}
-            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Set Module
-          </button>
-          <CommandButton label="Get Module Info" onClick={() => sendCommand('Module', '')} />
-          <CommandButton label="Get Modules List" onClick={() => sendCommand('Modules', '')} />
+            <option value="">-- Select module --</option>
+            {modules.map(m => (
+              <option key={m.id} value={m.id}>{m.id} {m.name}</option>
+            ))}
+          </select>
         </div>
 
         <div className="bg-amber-50 p-4 rounded-xl">
           <p className="text-sm text-amber-700">
-            <strong>Warning:</strong> Device will restart after changing module type.
+            <strong>Warning:</strong> Changing the module type will restart the device.
           </p>
         </div>
       </div>
