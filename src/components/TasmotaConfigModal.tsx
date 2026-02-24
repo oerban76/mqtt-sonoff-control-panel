@@ -6,7 +6,20 @@ import {
 } from 'lucide-react';
 import { Device, DeviceInfo } from '../types';
 import { cn } from '../utils/cn';
-import { GPIO_FUNCTIONS } from '../constants/gpioFunctions';
+import { TEMPLATE_MODULES, GPIO_FUNCTIONS_TEMPLATE, ADC_FUNCTIONS, GPIO_PINS } from '../constants/templateData';
+
+// Helper function to get module name from ID
+const getModuleName = (moduleId: number | string | object): string => {
+  let id: number;
+  if (typeof moduleId === 'object' && moduleId !== null) {
+    const keys = Object.keys(moduleId);
+    id = keys.length > 0 ? parseInt(keys[0]) : 0;
+  } else {
+    id = parseInt(String(moduleId));
+  }
+  const module = TEMPLATE_MODULES.find(m => m.id === id);
+  return module ? module.name : `Unknown Module (${id})`;
+};
 
 interface TasmotaConfigModalProps {
   isOpen: boolean;
@@ -342,7 +355,7 @@ export function TasmotaConfigModal({
           </div>
         </div>
         {deviceInfo?.module && (
-          <p className="text-blue-100 text-sm mt-2">Module: {String(deviceInfo.module)}</p>
+          <p className="text-blue-100 text-sm mt-2">Module: {getModuleName(deviceInfo.module)}</p>
         )}
       </div>
 
@@ -440,7 +453,7 @@ export function TasmotaConfigModal({
       { id: 71, name: 'Sonoff iFan03' },
     ];
 
-    const gpioFunctions = GPIO_FUNCTIONS;
+    const gpioFunctions = GPIO_FUNCTIONS_TEMPLATE;
 
     // Show all GPIOs from config, sorted by pin number
     const allGpios = Object.entries(gpioConfig)
@@ -660,42 +673,98 @@ export function TasmotaConfigModal({
     </div>
   );
 
-  const renderTemplate = () => (
-    <div className="space-y-4">
-      <BackButton onClick={() => setCurrentPage('configuration')} />
-      <h3 className="text-lg font-bold text-gray-800">Configure Template</h3>
-      
-      <div className="bg-white border rounded-xl p-3">
-        <label className="text-sm font-medium text-gray-700">Template JSON</label>
-        <textarea
-          placeholder='{"NAME":"...","GPIO":[...],"FLAG":0,"BASE":0}'
-          className="w-full px-3 py-2 border rounded-lg text-xs font-mono mt-2"
-          rows={6}
-          id="templateJson"
-        />
+  const renderTemplate = () => {
+    const [templateName, setTemplateName] = useState('');
+    const [basedOn, setBasedOn] = useState('');
+    const [gpioSettings, setGpioSettings] = useState<Record<string, string>>({});
+
+    return (
+      <div className="space-y-4">
+        <BackButton onClick={() => setCurrentPage('configuration')} />
+        <h3 className="text-lg font-bold text-gray-800">Template parameters</h3>
+        
+        <div className="bg-white border rounded-xl p-4 space-y-4">
+          {/* Template Name */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Name</label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name"
+            />
+          </div>
+
+          {/* Based On */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Based on</label>
+            <select 
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={basedOn}
+              onChange={(e) => setBasedOn(e.target.value)}
+            >
+              <option value="">-- Select base module --</option>
+              {TEMPLATE_MODULES.map(m => (
+                <option key={m.id} value={m.id}>{m.name} ({m.id})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* GPIO Configuration */}
+          <div className="space-y-3">
+            {GPIO_PINS.map(pin => (
+              <div key={pin} className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-700 w-16">GPIO{pin}</label>
+                <select
+                  className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  value={gpioSettings[`gpio${pin}`] || '0'}
+                  onChange={(e) => setGpioSettings(prev => ({ ...prev, [`gpio${pin}`]: e.target.value }))}
+                >
+                  {pin === 17 ? (
+                    ADC_FUNCTIONS.map(f => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))
+                  ) : (
+                    GPIO_FUNCTIONS_TEMPLATE.map(f => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))
+                  )}
+                </select>
+                <span className="text-xs text-gray-500 w-8">1</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <button
           onClick={() => {
-            const val = (document.getElementById('templateJson') as HTMLTextAreaElement)?.value;
-            if (val) sendCommand('Template', val);
+            const template = {
+              NAME: templateName || 'Custom Template',
+              GPIO: GPIO_PINS.map(pin => parseInt(gpioSettings[`gpio${pin}`] || '0')),
+              FLAG: 0,
+              BASE: parseInt(basedOn) || 18
+            };
+            sendCommand('Template', JSON.stringify(template));
           }}
-          className="w-full mt-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"
+          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl"
         >
-          Apply Template
+          Save
         </button>
-      </div>
 
-      <div className="space-y-2">
-        <CommandButton label="Get Current Template" onClick={() => sendCommand('Template', '')} />
-        <CommandButton label="Activate Template" onClick={() => sendCommand('Module', '0')} />
-      </div>
+        <div className="space-y-2">
+          <CommandButton label="Get Current Template" onClick={() => sendCommand('Template', '')} />
+          <CommandButton label="Activate Template" onClick={() => sendCommand('Module', '0')} />
+        </div>
 
-      <div className="bg-blue-50 p-4 rounded-xl">
-        <p className="text-sm text-blue-700">
-          <strong>Info:</strong> After applying template, set Module to 0 to activate it.
-        </p>
+        <div className="bg-blue-50 p-4 rounded-xl">
+          <p className="text-sm text-blue-700">
+            <strong>Info:</strong> After saving template, set Module to 0 to activate it.
+          </p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderGpio = () => (
     <div className="space-y-4">
@@ -996,7 +1065,7 @@ export function TasmotaConfigModal({
         <InfoRow label="IP Address" value={deviceInfo?.ipAddress} />
         <InfoRow label="Hostname" value={deviceInfo?.hostname} />
         <InfoRow label="MAC Address" value={deviceInfo?.mac} />
-        <InfoRow label="Module" value={deviceInfo?.module ? String(deviceInfo.module) : undefined} />
+        <InfoRow label="Module" value={deviceInfo?.module ? getModuleName(deviceInfo.module) : undefined} />
         <InfoRow label="Firmware Version" value={deviceInfo?.version ? String(deviceInfo.version) : undefined} />
         <InfoRow label="Uptime" value={deviceInfo?.uptime ? String(deviceInfo.uptime) : undefined} />
         <InfoRow label="WiFi SSID" value={deviceInfo?.ssid ? String(deviceInfo.ssid) : undefined} />
