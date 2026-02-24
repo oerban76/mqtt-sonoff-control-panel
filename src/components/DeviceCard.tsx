@@ -1,6 +1,7 @@
-import { Power, Settings, Trash2, RefreshCw, Sliders } from 'lucide-react';
+import { Power, Settings, Trash2, RefreshCw, Sliders, Clock } from 'lucide-react';
 import { Device, DeviceInfo } from '../types';
 import { cn } from '../utils/cn';
+import React from 'react';
 
 interface DeviceCardProps {
   device: Device;
@@ -16,6 +17,16 @@ interface DeviceCardProps {
 export function DeviceCard({ device, status, onToggle, onCommand, onDelete, onEdit, onOpenConfig, isConnected }: DeviceCardProps) {
   const isOn = status?.status === 'ON';
   const isOnline = status?.isOnline ?? false;
+  
+  // Local clock
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+  
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className={cn(
@@ -88,11 +99,12 @@ export function DeviceCard({ device, status, onToggle, onCommand, onDelete, onEd
             </div>
           )}
           
-          {status?.lastSeen && (
-            <span className="text-xs text-gray-400">
-              {status.lastSeen}
+          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full">
+            <Clock className="w-3 h-3 text-blue-600" />
+            <span className="text-xs font-medium text-blue-700 font-mono">
+              {currentTime.toLocaleTimeString()}
             </span>
-          )}
+          </div>
         </div>
 
         {/* Sensor Data (if available) */}

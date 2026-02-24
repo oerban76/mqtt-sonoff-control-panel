@@ -38,8 +38,24 @@ export function TasmotaConfigModal({
   const [timerInputs, setTimerInputs] = useState<Record<string, string>>({});
   const [timersLoaded, setTimersLoaded] = useState(false);
   const [timersEnabled, setTimersEnabled] = useState(true);
-  const consoleRef = useRef<HTMLDivElement>(null);
-  const initialLoadRef = useRef(false);
+  const [deviceTime, setDeviceTime] = useState<Date | null>(null);
+  const [timeOffset, setTimeOffset] = useState(0);
+  // Local clock that updates every second
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate display time based on device time offset
+  const getDisplayTime = () => {
+    if (!deviceTime) return currentTime.toLocaleTimeString();
+    const adjusted = new Date(currentTime.getTime() + timeOffset);
+    return adjusted.toLocaleTimeString();
+  };
 
   // Memoized command sender to prevent multiple calls
   const sendCommand = useCallback((cmd: string, payload: string = '') => {
@@ -106,6 +122,21 @@ export function TasmotaConfigModal({
     try {
       const json = JSON.parse(payload);
       console.log('📦 Parsed JSON:', json);
+      
+      // Parse Time from device
+      if (json.Time) {
+        try {
+          // Tasmota sends time like "2024-01-15T10:30:45"
+          const deviceDateTime = new Date(json.Time);
+          const localDateTime = new Date();
+          const offset = deviceDateTime.getTime() - localDateTime.getTime();
+          setDeviceTime(deviceDateTime);
+          setTimeOffset(offset);
+          console.log('✅ Device Time:', json.Time, 'Offset:', offset);
+        } catch (e) {
+          console.log('⚠️ Failed to parse device time');
+        }
+      }
       
       // Parse Module response
       if (json.Module !== undefined) {
