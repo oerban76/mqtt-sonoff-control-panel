@@ -34,6 +34,7 @@ export function TasmotaConfigModal({
   const [consoleHistory, setConsoleHistory] = useState<string[]>([]);
   const [moduleSelect, setModuleSelect] = useState('');
   const [gpioConfig, setGpioConfig] = useState<Record<string, string>>({});
+  const [currentModuleId, setCurrentModuleId] = useState('');
   const [timerInputs, setTimerInputs] = useState<Record<string, string>>({});
   const consoleRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef(false);
@@ -65,20 +66,56 @@ export function TasmotaConfigModal({
     }
   }, [isOpen]);
 
-  // Update console history when new message arrives
+  // Load module config when entering module page
   useEffect(() => {
+    if (currentPage === 'module' && isConnected) {
+      sendCommand('Module', '');
+      sendCommand('GPIO', '');
+    }
+  }, [currentPage, isConnected, sendCommand]);
+
+  // Parse MQTT messages for module config
+  useEffect(() => {
+    if (lastMessage && lastMessage.topic.includes(device.topic)) {
+      try {
+        const payload = lastMessage.payload;
+        
+        // Parse Module response
+        if (lastMessage.topic.includes('RESULT') && payload.includes('Module')) {
+          const match = payload.match(/"Module":(\d+)/);
+          if (match) {
+            setCurrentModuleId(match[1]);
+            setModuleSelect(match[1]);
+          }
+        }
+        
+        // Parse GPIO response
+        if (lastMessage.topic.includes('RESULT') && payload.includes('GPIO')) {
+          const gpioMatch = payload.match(/"GPIO(\d+)":(\d+)/g);
+          if (gpioMatch) {
+            const newConfig: Record<string, string> = {};
+            gpioMatch.forEach(item => {
+              const [, pin, func] = item.match(/"GPIO(\d+)":(\d+)/) || [];
+              if (pin && func) newConfig[`gpio${pin}`] = func;
+            });
+            setGpioConfig(newConfig);
+          }
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    
+    // Update console history
     if (lastMessage && isOpen && currentPage === 'console') {
-      // Only show messages for this device
       if (lastMessage.topic.includes(device.topic)) {
         const formattedMsg = `${lastMessage.topic}: ${lastMessage.payload}`;
         setConsoleHistory(prev => {
-          // Prevent duplicate messages
           if (prev.length > 0 && prev[prev.length - 1] === formattedMsg) {
             return prev;
           }
           return [...prev.slice(-50), formattedMsg];
         });
-        // Auto scroll to bottom
         setTimeout(() => {
           if (consoleRef.current) {
             consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
@@ -86,7 +123,7 @@ export function TasmotaConfigModal({
         }, 50);
       }
     }
-  }, [lastMessage, isOpen, currentPage, device.topic]);
+  }, [lastMessage, device.topic, isOpen, currentPage]);
 
   if (!isOpen) return null;
 
@@ -263,7 +300,7 @@ export function TasmotaConfigModal({
             <label className="text-sm font-medium text-gray-700 block mb-2">Module type</label>
             <select 
               className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={moduleSelect}
+              value={moduleSelect || currentModuleId}
               onChange={(e) => setModuleSelect(e.target.value)}
             >
               <option value="">-- Select module --</option>
