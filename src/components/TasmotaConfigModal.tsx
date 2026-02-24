@@ -32,6 +32,7 @@ export function TasmotaConfigModal({
   const [currentPage, setCurrentPage] = useState<MenuPage>('main');
   const [consoleInput, setConsoleInput] = useState('');
   const [consoleHistory, setConsoleHistory] = useState<string[]>([]);
+  const [moduleSelect, setModuleSelect] = useState('');
   const [timerInputs, setTimerInputs] = useState<Record<string, string>>({});
   const consoleRef = useRef<HTMLDivElement>(null);
   const initialLoadRef = useRef(false);
@@ -214,45 +215,81 @@ export function TasmotaConfigModal({
     </div>
   );
 
-  const renderModule = () => (
-    <div className="space-y-4">
-      <BackButton onClick={() => setCurrentPage('configuration')} />
-      <h3 className="text-lg font-bold text-gray-800">Configure Module</h3>
-      
-      <div className="bg-gray-50 p-4 rounded-xl space-y-3">
-        <div>
-          <label className="text-sm font-medium text-gray-700">Module Type</label>
-          <p className="text-gray-800 font-mono text-sm mt-1">{deviceInfo?.module || 'Unknown'}</p>
+  const renderModule = () => {
+    const modules = [
+      { id: 0, name: 'Generic' },
+      { id: 1, name: 'Sonoff Basic' },
+      { id: 2, name: 'Sonoff RF' },
+      { id: 4, name: 'Sonoff TH' },
+      { id: 5, name: 'Sonoff Dual' },
+      { id: 6, name: 'Sonoff Pow' },
+      { id: 7, name: 'Sonoff 4CH' },
+      { id: 8, name: 'Sonoff S2X' },
+      { id: 9, name: 'Sonoff Touch' },
+      { id: 11, name: 'Sonoff LED' },
+      { id: 18, name: 'Generic' },
+      { id: 19, name: 'Sonoff Dev' },
+      { id: 25, name: 'Sonoff Bridge' },
+      { id: 26, name: 'Sonoff B1' },
+      { id: 29, name: 'Sonoff T1 1CH' },
+      { id: 30, name: 'Sonoff T1 2CH' },
+      { id: 31, name: 'Sonoff T1 3CH' },
+      { id: 41, name: 'Sonoff S31' },
+      { id: 44, name: 'Sonoff iFan02' },
+      { id: 71, name: 'Sonoff iFan03' },
+    ];
+
+    return (
+      <div className="space-y-4">
+        <BackButton onClick={() => setCurrentPage('configuration')} />
+        <h3 className="text-lg font-bold text-gray-800">Configure Module</h3>
+        
+        <div className="bg-gray-50 p-4 rounded-xl space-y-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Current Module</label>
+            <p className="text-gray-800 font-mono text-sm mt-1">{deviceInfo?.module || 'Unknown'}</p>
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Module Type</label>
+            <select 
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={moduleSelect}
+              onChange={(e) => setModuleSelect(e.target.value)}
+            >
+              <option value="">Select module...</option>
+              {modules.map(m => (
+                <option key={m.id} value={m.id}>{m.id} - {m.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div>
-          <label className="text-sm font-medium text-gray-700">Module Number</label>
-          <input
-            type="number"
-            placeholder="0-255"
-            className="w-full px-3 py-2 border rounded-lg text-sm mt-1"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                const val = (e.target as HTMLInputElement).value;
-                if (val) sendCommand('Module', val);
+
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              if (moduleSelect) {
+                sendCommand('Module', moduleSelect);
+                setModuleSelect('');
               }
             }}
-          />
-          <p className="text-xs text-gray-500 mt-1">0=Generic, 18=Sonoff Basic, etc.</p>
+            disabled={!moduleSelect}
+            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Set Module
+          </button>
+          <CommandButton label="Get Module Info" onClick={() => sendCommand('Module', '')} />
+          <CommandButton label="Get Modules List" onClick={() => sendCommand('Modules', '')} />
+        </div>
+
+        <div className="bg-amber-50 p-4 rounded-xl">
+          <p className="text-sm text-amber-700">
+            <strong>Warning:</strong> Device will restart after changing module type.
+          </p>
         </div>
       </div>
-
-      <div className="space-y-2">
-        <CommandButton label="Get Module Info" onClick={() => sendCommand('Module', '')} />
-        <CommandButton label="Get Modules List" onClick={() => sendCommand('Modules', '')} />
-      </div>
-
-      <div className="bg-amber-50 p-4 rounded-xl">
-        <p className="text-sm text-amber-700">
-          <strong>Warning:</strong> Changing module type may require device restart.
-        </p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderWifi = () => (
     <div className="space-y-4">
