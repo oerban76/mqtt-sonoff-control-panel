@@ -342,7 +342,7 @@ export function TasmotaConfigModal({
           </div>
         </div>
         {deviceInfo?.module && (
-          <p className="text-blue-100 text-sm mt-2">Module: {deviceInfo.module}</p>
+          <p className="text-blue-100 text-sm mt-2">Module: {String(deviceInfo.module)}</p>
         )}
       </div>
 
@@ -360,7 +360,7 @@ export function TasmotaConfigModal({
           deviceInfo?.status === 'ON' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"
         )}>
           <Power className="w-5 h-5 mx-auto mb-1" />
-          <p className="text-sm font-medium">{deviceInfo?.status || 'Unknown'}</p>
+          <p className="text-sm font-medium">{deviceInfo?.status ? String(deviceInfo.status) : 'Unknown'}</p>
         </div>
       </div>
 
@@ -548,10 +548,10 @@ export function TasmotaConfigModal({
                   (deviceInfo?.rssi ?? 0) > 70 ? "bg-emerald-500" : 
                   (deviceInfo?.rssi ?? 0) > 40 ? "bg-amber-500" : "bg-red-500"
                 )}
-                style={{ width: `${deviceInfo?.rssi || 0}%` }}
+                style={{ width: `${deviceInfo?.rssi ? String(deviceInfo.rssi) : '0'}%` }}
               />
             </div>
-            <span className="text-sm text-gray-600">{deviceInfo?.rssi || 0}%</span>
+            <span className="text-sm text-gray-600">{deviceInfo?.rssi ? String(deviceInfo.rssi) : '0'}%</span>
           </div>
         </div>
         <div>

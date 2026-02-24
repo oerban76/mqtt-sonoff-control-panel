@@ -94,7 +94,7 @@ export function DeviceCard({ device, status, onToggle, onCommand, onDelete, onEd
                 "text-xs font-medium",
                 status.rssi > 70 ? "text-emerald-600" : status.rssi > 40 ? "text-amber-600" : "text-red-600"
               )}>
-                {status.rssi}%
+                {String(status.rssi)}%
               </span>
             </div>
           )}
@@ -114,25 +114,25 @@ export function DeviceCard({ device, status, onToggle, onCommand, onDelete, onEd
               {status?.temperature !== undefined && (
                 <div>
                   <span className="text-gray-500">Temp:</span>
-                  <span className="ml-1 font-medium text-gray-700">{status.temperature}°C</span>
+                  <span className="ml-1 font-medium text-gray-700">{String(status.temperature)}°C</span>
                 </div>
               )}
               {status?.humidity !== undefined && (
                 <div>
                   <span className="text-gray-500">Humidity:</span>
-                  <span className="ml-1 font-medium text-gray-700">{status.humidity}%</span>
+                  <span className="ml-1 font-medium text-gray-700">{String(status.humidity)}%</span>
                 </div>
               )}
               {status?.power !== undefined && (
                 <div>
                   <span className="text-gray-500">Power:</span>
-                  <span className="ml-1 font-medium text-gray-700">{status.power}W</span>
+                  <span className="ml-1 font-medium text-gray-700">{String(status.power)}W</span>
                 </div>
               )}
               {status?.voltage !== undefined && (
                 <div>
                   <span className="text-gray-500">Voltage:</span>
-                  <span className="ml-1 font-medium text-gray-700">{status.voltage}V</span>
+                  <span className="ml-1 font-medium text-gray-700">{String(status.voltage)}V</span>
                 </div>
               )}
             </div>

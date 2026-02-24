@@ -216,13 +216,13 @@ export function App() {
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <p className="text-sm text-gray-500">Online</p>
               <p className="text-2xl font-bold text-emerald-600">
-                {Object.values(deviceStatuses).filter(s => s.isOnline).length}
+                {Object.values(deviceStatuses || {}).filter(s => s?.isOnline).length}
               </p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <p className="text-sm text-gray-500">Turned On</p>
               <p className="text-2xl font-bold text-amber-600">
-                {Object.values(deviceStatuses).filter(s => s.status === 'ON').length}
+                {Object.values(deviceStatuses || {}).filter(s => s?.status === 'ON').length}
               </p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -272,7 +272,7 @@ export function App() {
           lastMessage={lastMessage}
         />
       )}
-    </div>
+      </div>
     </ErrorBoundary>
   );
 }
