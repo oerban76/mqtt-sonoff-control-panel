@@ -319,31 +319,6 @@ export function TasmotaConfigModal({
         label="Firmware Upgrade" 
         onClick={() => setCurrentPage('firmware')}
       />
-
-      {/* Quick Actions */}
-      <div className="border-t pt-4 mt-4">
-        <h4 className="text-sm font-semibold text-gray-500 mb-3">Quick Actions</h4>
-        <div className="grid grid-cols-3 gap-2">
-          <QuickButton 
-            icon={Power} 
-            label="Toggle" 
-            onClick={() => sendCommand('POWER', 'TOGGLE')}
-            color="emerald"
-          />
-          <QuickButton 
-            icon={RefreshCw} 
-            label="Restart" 
-            onClick={() => sendCommand('RESTART', '1')}
-            color="amber"
-          />
-          <QuickButton 
-            icon={Activity} 
-            label="Status" 
-            onClick={() => sendCommand('STATUS', '0')}
-            color="blue"
-          />
-        </div>
-      </div>
     </div>
   );
 
