@@ -657,7 +657,7 @@ export function TasmotaConfigModal({
               }}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <span className="font-medium text-gray-700">Timers Status</span>
+            <span className="font-medium text-gray-700">Enable Timers</span>
           </label>
         </div>
       </div>
