@@ -130,7 +130,12 @@ export function TasmotaConfigModal({
       // Parse Timers response
       if (json.Timers !== undefined) {
         console.log('✅ Timers:', json.Timers);
-        // Parse timer data if needed
+        // Parse global timers status (ON=1, OFF=0)
+        if (typeof json.Timers === 'string') {
+          setTimersEnabled(json.Timers === 'ON' || json.Timers === '1');
+        } else if (typeof json.Timers === 'number') {
+          setTimersEnabled(json.Timers === 1);
+        }
       }
       
       // Parse individual Timer response
