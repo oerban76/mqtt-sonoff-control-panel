@@ -408,13 +408,14 @@ export function TasmotaConfigModal({
               <div className="space-y-2">
                 {activeGpios.map(([key, value]) => {
                   const pin = key.replace('gpio', '');
-                  const funcName = gpioFunctions.find(f => f.id === parseInt(value))?.name || `Function ${value}`;
+                  const currentValue = gpioConfig[key] || value;
+                  const funcName = gpioFunctions.find(f => f.id === parseInt(currentValue))?.name || `Function ${currentValue}`;
                   return (
                     <div key={key} className="flex items-center gap-2">
                       <label className="text-xs text-gray-600 w-16 font-medium">GPIO{pin}</label>
                       <select
                         className="flex-1 px-2 py-1 border rounded text-xs"
-                        value={value}
+                        value={currentValue}
                         onChange={(e) => setGpioConfig(prev => ({ ...prev, [key]: e.target.value }))}
                       >
                         {gpioFunctions.map(f => (
