@@ -143,7 +143,7 @@ export function TasmotaConfigModal({
     
     try {
       const json = JSON.parse(payload);
-      console.log('📦 Parsed JSON:', json);
+      console.log('📦 Parsed JSON:', JSON.stringify(json));
       
       // Parse Time from device
       if (json.Time) {
@@ -195,7 +195,7 @@ export function TasmotaConfigModal({
                 newConfig[`gpio${pin}`] = String(gpioValue);
               }
             });
-            console.log('✅ GPIO Config:', newConfig);
+            console.log('✅ GPIO Config:', JSON.stringify(newConfig));
             return newConfig;
           });
         }
@@ -204,7 +204,7 @@ export function TasmotaConfigModal({
       // Parse Timers response
       if (currentPage === 'timers') {
         if (json.Timers !== undefined) {
-          console.log('✅ Timers:', json.Timers);
+          console.log('✅ Timers:', JSON.stringify(json.Timers));
           if (typeof json.Timers === 'string') {
             setTimersEnabled(json.Timers === 'ON' || json.Timers === '1');
           } else if (typeof json.Timers === 'number') {
@@ -218,7 +218,7 @@ export function TasmotaConfigModal({
           if (timerMatch && json[key]) {
             const timerNum = timerMatch[1];
             const timerData = json[key];
-            console.log(`✅ Timer${timerNum}:`, timerData);
+            console.log(`✅ Timer${timerNum}:`, JSON.stringify(timerData));
             
             if (typeof timerData === 'object') {
               setTimerInputs(prev => ({
@@ -266,7 +266,7 @@ export function TasmotaConfigModal({
               const match = item.match(/"GPIO(\d+)":(\d+)/);
               if (match) newConfig[`gpio${match[1]}`] = match[2];
             });
-            console.log('✅ GPIO Config (regex):', newConfig);
+            console.log('✅ GPIO Config (regex):', JSON.stringify(newConfig));
             return newConfig;
           });
         }
@@ -280,7 +280,7 @@ export function TasmotaConfigModal({
               const match = item.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/);
               if (match) newConfig[`gpio${match[1]}`] = match[2];
             });
-            console.log('✅ GPIO Config (object regex):', newConfig);
+            console.log('✅ GPIO Config (object regex):', JSON.stringify(newConfig));
             return newConfig;
           });
         }
@@ -322,7 +322,7 @@ export function TasmotaConfigModal({
   };
 
   const renderMainMenu = () => {
-    console.log('Rendering main menu, deviceInfo:', deviceInfo);
+    console.log('Rendering main menu, deviceInfo:', deviceInfo ? JSON.stringify(deviceInfo) : 'undefined');
     try {
     return (
     <div className="space-y-3">
