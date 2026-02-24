@@ -57,9 +57,9 @@ export function TasmotaConfigModal({
 
   // Calculate display time based on device time offset
   const getDisplayTime = () => {
-    if (!deviceTime) return currentTime.toLocaleTimeString();
+    if (!deviceTime) return currentTime.toLocaleTimeString('en-GB', { hour12: false });
     const adjusted = new Date(currentTime.getTime() + timeOffset);
-    return adjusted.toLocaleTimeString();
+    return adjusted.toLocaleTimeString('en-GB', { hour12: false });
   };
 
   // Memoized command sender to prevent multiple calls
@@ -1035,6 +1035,7 @@ export function TasmotaConfigModal({
   );
 
   const renderPage = () => {
+    console.log('Current page:', currentPage);
     switch (currentPage) {
       case 'main': return renderMainMenu();
       case 'configuration': return renderConfiguration();
@@ -1075,7 +1076,7 @@ export function TasmotaConfigModal({
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+        <div key={currentPage} className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
           {!isConnected ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
