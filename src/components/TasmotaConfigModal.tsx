@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Device, DeviceInfo } from '../types';
 import { cn } from '../utils/cn';
+import { GPIO_FUNCTIONS } from '../constants/gpioFunctions';
 
 interface TasmotaConfigModalProps {
   isOpen: boolean;
@@ -74,6 +75,7 @@ export function TasmotaConfigModal({
       const timer = setTimeout(() => {
         sendCommand('STATUS', '0');
         sendCommand('Module', ''); // Get current module
+        sendCommand('GPIO', ''); // Get GPIO config
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -175,13 +177,25 @@ export function TasmotaConfigModal({
         }
       }
       
-      // Parse GPIO response (only on module page or if gpioConfig is empty)
+      // Parse GPIO response
       const gpioKeys = Object.keys(json).filter(k => k.startsWith('GPIO'));
       if (gpioKeys.length > 0) {
         const newConfig: Record<string, string> = {};
         gpioKeys.forEach(key => {
           const pin = key.replace('GPIO', '');
-          newConfig[`gpio${pin}`] = String(json[key]);
+          const gpioValue = json[key];
+          
+          // Handle both formats:
+          // Old: {"GPIO1":0}
+          // New: {"GPIO1":{"None":0}} or {"GPIO2":{"Relay_i1":256}}
+          if (typeof gpioValue === 'object' && gpioValue !== null) {
+            // New format: get the value from the object
+            const funcValue = Object.values(gpioValue)[0];
+            newConfig[`gpio${pin}`] = String(funcValue);
+          } else {
+            // Old format: direct value
+            newConfig[`gpio${pin}`] = String(gpioValue);
+          }
         });
         console.log('✅ GPIO Config:', newConfig);
         // Only set if gpioConfig is empty
@@ -254,6 +268,18 @@ export function TasmotaConfigModal({
           if (match) newConfig[`gpio${match[1]}`] = match[2];
         });
         console.log('✅ GPIO Config (regex):', newConfig);
+        setGpioConfig(prev => Object.keys(prev).length === 0 ? newConfig : prev);
+      }
+      
+      // Parse new GPIO format: {"GPIO1":{"None":0}}
+      const gpioObjMatches = payload.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/g);
+      if (gpioObjMatches) {
+        const newConfig: Record<string, string> = {};
+        gpioObjMatches.forEach(item => {
+          const match = item.match(/"GPIO(\d+)":\{"[^"]+":(\d+)\}/);
+          if (match) newConfig[`gpio${match[1]}`] = match[2];
+        });
+        console.log('✅ GPIO Config (object regex):', newConfig);
         setGpioConfig(prev => Object.keys(prev).length === 0 ? newConfig : prev);
       }
     }
@@ -400,17 +426,7 @@ export function TasmotaConfigModal({
       { id: 71, name: 'Sonoff iFan03' },
     ];
 
-    const gpioFunctions = [
-      { id: 0, name: 'None' },
-      { id: 1, name: 'Button' },
-      { id: 21, name: 'Switch' },
-      { id: 52, name: 'Relay' },
-      { id: 56, name: 'LED' },
-      { id: 17, name: 'DHT11' },
-      { id: 18, name: 'DHT22' },
-      { id: 32, name: 'PWM' },
-      { id: 224, name: 'Relay_i' },
-    ];
+    const gpioFunctions = GPIO_FUNCTIONS;
 
     // Filter only active GPIOs (non-zero)
     const activeGpios = Object.entries(gpioConfig)
@@ -448,7 +464,7 @@ export function TasmotaConfigModal({
                 {activeGpios.map(([key, value]) => {
                   const pin = key.replace('gpio', '');
                   const currentValue = gpioConfig[key] || value;
-                  const funcName = gpioFunctions.find(f => f.id === parseInt(currentValue))?.name || `Function ${currentValue}`;
+                  const funcName = gpioFunctions.find(f => f.id === parseInt(currentValue))?.name || `Unknown (${currentValue})`;
                   return (
                     <div key={key} className="flex items-center gap-2">
                       <label className="text-xs text-gray-600 w-16 font-medium">GPIO{pin}</label>
