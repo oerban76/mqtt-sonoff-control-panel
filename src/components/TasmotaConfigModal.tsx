@@ -69,85 +69,122 @@ export function TasmotaConfigModal({
   // Load module config when entering module page
   useEffect(() => {
     if (currentPage === 'module' && isConnected) {
-      sendCommand('Module', '');
-      sendCommand('GPIO', '');
+      console.log('Loading module config...');
+      setTimeout(() => {
+        sendCommand('Module', '');
+      }, 100);
+      setTimeout(() => {
+        sendCommand('GPIO', '');
+      }, 300);
+    }
+  }, [currentPage, isConnected, sendCommand]);
+
+  // Load timer config when entering timers page
+  useEffect(() => {
+    if (currentPage === 'timers' && isConnected) {
+      console.log('Loading timers config...');
+      setTimeout(() => {
+        sendCommand('Timers', '');
+      }, 100);
     }
   }, [currentPage, isConnected, sendCommand]);
 
   // Parse MQTT messages for module config
   useEffect(() => {
-    if (lastMessage && lastMessage.topic.includes(device.topic)) {
-      const payload = lastMessage.payload;
-      console.log('MQTT Message:', lastMessage.topic, payload);
+    if (!lastMessage || !lastMessage.topic.includes(device.topic)) return;
+    
+    const payload = lastMessage.payload;
+    console.log('📨 MQTT:', lastMessage.topic, payload);
+    
+    try {
+      const json = JSON.parse(payload);
+      console.log('📦 Parsed JSON:', json);
       
-      try {
-        // Try parse as JSON first
-        const json = JSON.parse(payload);
-        
-        // Parse Module response
-        if (json.Module !== undefined) {
-          console.log('Module ID:', json.Module);
-          setCurrentModuleId(String(json.Module));
-          setModuleSelect(String(json.Module));
-        }
-        
-        // Parse GPIO response - handle both formats
-        if (json.GPIO || json.GPIOs) {
-          const gpioData = json.GPIO || json.GPIOs || {};
-          console.log('GPIO Data:', gpioData);
-          const newConfig: Record<string, string> = {};
+      // Parse Module response
+      if (json.Module !== undefined) {
+        const moduleId = String(json.Module);
+        console.log('✅ Module ID:', moduleId);
+        setCurrentModuleId(moduleId);
+        setModuleSelect(moduleId);
+      }
+      
+      // Parse GPIO response
+      const gpioKeys = Object.keys(json).filter(k => k.startsWith('GPIO'));
+      if (gpioKeys.length > 0) {
+        const newConfig: Record<string, string> = {};
+        gpioKeys.forEach(key => {
+          const pin = key.replace('GPIO', '');
+          newConfig[`gpio${pin}`] = String(json[key]);
+        });
+        console.log('✅ GPIO Config:', newConfig);
+        setGpioConfig(newConfig);
+      }
+      
+      // Parse Timers response
+      if (json.Timers !== undefined) {
+        console.log('✅ Timers:', json.Timers);
+        // Parse timer data if needed
+      }
+      
+      // Parse individual Timer response
+      Object.keys(json).forEach(key => {
+        const timerMatch = key.match(/^Timer(\d+)$/);
+        if (timerMatch && json[key]) {
+          const timerNum = timerMatch[1];
+          const timerData = json[key];
+          console.log(`✅ Timer${timerNum}:`, timerData);
           
-          Object.keys(gpioData).forEach(key => {
-            const pinMatch = key.match(/^GPIO(\d+)$/);
-            if (pinMatch) {
-              const pin = pinMatch[1];
-              newConfig[`gpio${pin}`] = String(gpioData[key]);
-            }
-          });
-          
-          console.log('Parsed GPIO Config:', newConfig);
-          setGpioConfig(newConfig);
+          if (typeof timerData === 'object') {
+            setTimerInputs(prev => ({
+              ...prev,
+              [`timer${timerNum}_enable`]: String(timerData.Enable || 0),
+              [`timer${timerNum}_mode`]: String(timerData.Mode || 0),
+              [`timer${timerNum}_time`]: timerData.Time || '00:00',
+              [`timer${timerNum}_window`]: String(timerData.Window || 0),
+              [`timer${timerNum}_days`]: timerData.Days || '0000000',
+              [`timer${timerNum}_repeat`]: String(timerData.Repeat || 0),
+              [`timer${timerNum}_output`]: String(timerData.Output || 1),
+              [`timer${timerNum}_action`]: String(timerData.Action || 0),
+            }));
+          }
         }
-      } catch (e) {
-        // Not JSON, try regex parsing
-        const moduleMatch = payload.match(/"Module":(\d+)/);
-        if (moduleMatch) {
-          console.log('Module ID (regex):', moduleMatch[1]);
-          setCurrentModuleId(moduleMatch[1]);
-          setModuleSelect(moduleMatch[1]);
-        }
-        
-        const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
-        if (gpioMatches) {
-          const newConfig: Record<string, string> = {};
-          gpioMatches.forEach(item => {
-            const match = item.match(/"GPIO(\d+)":(\d+)/);
-            if (match) {
-              newConfig[`gpio${match[1]}`] = match[2];
-            }
-          });
-          console.log('Parsed GPIO Config (regex):', newConfig);
-          setGpioConfig(newConfig);
-        }
+      });
+      
+    } catch (e) {
+      console.log('⚠️ Not JSON, trying regex...');
+      
+      // Fallback regex parsing
+      const moduleMatch = payload.match(/"Module":(\d+)/);
+      if (moduleMatch) {
+        console.log('✅ Module ID (regex):', moduleMatch[1]);
+        setCurrentModuleId(moduleMatch[1]);
+        setModuleSelect(moduleMatch[1]);
+      }
+      
+      const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
+      if (gpioMatches) {
+        const newConfig: Record<string, string> = {};
+        gpioMatches.forEach(item => {
+          const match = item.match(/"GPIO(\d+)":(\d+)/);
+          if (match) newConfig[`gpio${match[1]}`] = match[2];
+        });
+        console.log('✅ GPIO Config (regex):', newConfig);
+        setGpioConfig(newConfig);
       }
     }
     
     // Update console history
-    if (lastMessage && isOpen && currentPage === 'console') {
-      if (lastMessage.topic.includes(device.topic)) {
-        const formattedMsg = `${lastMessage.topic}: ${lastMessage.payload}`;
-        setConsoleHistory(prev => {
-          if (prev.length > 0 && prev[prev.length - 1] === formattedMsg) {
-            return prev;
-          }
-          return [...prev.slice(-50), formattedMsg];
-        });
-        setTimeout(() => {
-          if (consoleRef.current) {
-            consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
-          }
-        }, 50);
-      }
+    if (isOpen && currentPage === 'console') {
+      const formattedMsg = `${lastMessage.topic}: ${lastMessage.payload}`;
+      setConsoleHistory(prev => {
+        if (prev.length > 0 && prev[prev.length - 1] === formattedMsg) return prev;
+        return [...prev.slice(-50), formattedMsg];
+      });
+      setTimeout(() => {
+        if (consoleRef.current) {
+          consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+        }
+      }, 50);
     }
   }, [lastMessage, device.topic, isOpen, currentPage]);
 
