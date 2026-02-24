@@ -386,37 +386,141 @@ export function TasmotaConfigModal({
         </div>
       </div>
 
-      <div className="space-y-2">
-        {[1, 2, 3, 4].map(num => (
+      <div className="space-y-3">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(num => (
           <div key={num} className="bg-white border rounded-xl p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-700">Timer {num}</span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold text-gray-800">Timer {num}</span>
               <button
                 onClick={() => sendCommand(`Timer${num}`, '')}
-                className="text-sm text-blue-600 hover:text-blue-700"
+                className="text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded"
               >
-                Get Status
+                Get
               </button>
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder='{"Enable":1,"Time":"06:00"}'
-                value={timerInputs[`timer${num}`] || ''}
-                onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}`]: e.target.value }))}
-                className="flex-1 px-3 py-2 border rounded-lg text-sm font-mono"
-              />
-              <button
-                onClick={() => {
-                  if (timerInputs[`timer${num}`]) {
-                    sendCommand(`Timer${num}`, timerInputs[`timer${num}`]);
-                  }
-                }}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-              >
-                Set
-              </button>
+            
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="text-xs text-gray-500">Enable</label>
+                <select 
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_enable`]: e.target.value }))}
+                >
+                  <option value="0">OFF</option>
+                  <option value="1">ON</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Mode</label>
+                <select 
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_mode`]: e.target.value }))}
+                >
+                  <option value="0">Scheduler</option>
+                  <option value="1">Sunrise</option>
+                  <option value="2">Sunset</option>
+                </select>
+              </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="text-xs text-gray-500">Time</label>
+                <input
+                  type="time"
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_time`]: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Window</label>
+                <input
+                  type="number"
+                  placeholder="±min"
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_window`]: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <label className="text-xs text-gray-500">Days</label>
+              <div className="flex gap-1">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                  <button
+                    key={day}
+                    onClick={() => {
+                      const key = `timer${num}_days`;
+                      const current = timerInputs[key] || '0000000';
+                      const arr = current.split('');
+                      arr[idx] = arr[idx] === '1' ? '0' : '1';
+                      setTimerInputs(prev => ({ ...prev, [key]: arr.join('') }));
+                    }}
+                    className={cn(
+                      "flex-1 text-xs py-1 rounded",
+                      (timerInputs[`timer${num}_days`] || '0000000')[idx] === '1'
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-600"
+                    )}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div>
+                <label className="text-xs text-gray-500">Repeat</label>
+                <select 
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_repeat`]: e.target.value }))}
+                >
+                  <option value="0">OFF</option>
+                  <option value="1">ON</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Output</label>
+                <select 
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_output`]: e.target.value }))}
+                >
+                  {[1,2,3,4,5,6,7,8].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Action</label>
+                <select 
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_action`]: e.target.value }))}
+                >
+                  <option value="0">OFF</option>
+                  <option value="1">ON</option>
+                  <option value="2">TOGGLE</option>
+                  <option value="3">RULE</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                const enable = timerInputs[`timer${num}_enable`] || '0';
+                const mode = timerInputs[`timer${num}_mode`] || '0';
+                const time = timerInputs[`timer${num}_time`] || '00:00';
+                const window = timerInputs[`timer${num}_window`] || '0';
+                const days = timerInputs[`timer${num}_days`] || '0000000';
+                const repeat = timerInputs[`timer${num}_repeat`] || '0';
+                const output = timerInputs[`timer${num}_output`] || '1';
+                const action = timerInputs[`timer${num}_action`] || '0';
+                
+                const payload = `{"Enable":${enable},"Mode":${mode},"Time":"${time}","Window":${window},"Days":"${days}","Repeat":${repeat},"Output":${output},"Action":${action}}`;
+                sendCommand(`Timer${num}`, payload);
+              }}
+              className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+            >
+              Set Timer {num}
+            </button>
           </div>
         ))}
       </div>
