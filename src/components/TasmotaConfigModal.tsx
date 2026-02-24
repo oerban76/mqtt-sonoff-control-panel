@@ -91,9 +91,6 @@ export function TasmotaConfigModal({
       setModuleSelect('');
       setGpioConfig({});
       setCurrentModuleId('');
-    } else {
-      // Ensure we're on main page when opening
-      setCurrentPage('main');
     }
   }, [isOpen]);
 
@@ -300,7 +297,7 @@ export function TasmotaConfigModal({
         }
       }, 50);
     }
-  }, [lastMessage, device.topic, isOpen, currentPage]);
+  }, [lastMessage, device.topic, isOpen]);
 
   if (!isOpen) return null;
 
