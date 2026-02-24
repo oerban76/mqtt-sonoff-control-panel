@@ -73,6 +73,7 @@ export function TasmotaConfigModal({
       // Single STATUS 0 gets most info
       const timer = setTimeout(() => {
         sendCommand('STATUS', '0');
+        sendCommand('Module', ''); // Get current module
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -150,19 +151,33 @@ export function TasmotaConfigModal({
         }
       }
       
-      // Parse Module response (only on module page)
-      if (json.Module !== undefined && currentPage === 'module') {
-        const moduleId = String(json.Module);
-        console.log('✅ Module ID:', moduleId);
-        setCurrentModuleId(moduleId);
-        if (!moduleSelect) {
-          setModuleSelect(moduleId);
+      // Parse Module response (only on module page or initial load)
+      if (json.Module !== undefined) {
+        // Handle both formats: {"Module":1} and {"Module":{"1":"Sonoff Basic"}}
+        let moduleId = '';
+        if (typeof json.Module === 'object' && json.Module !== null) {
+          // Format: {"Module":{"1":"Sonoff Basic"}}
+          const moduleKey = Object.keys(json.Module)[0];
+          if (moduleKey) {
+            moduleId = moduleKey;
+          }
+        } else {
+          // Format: {"Module":1}
+          moduleId = String(json.Module);
+        }
+        
+        if (moduleId) {
+          console.log('✅ Module ID:', moduleId);
+          setCurrentModuleId(moduleId);
+          if (!moduleSelect) {
+            setModuleSelect(moduleId);
+          }
         }
       }
       
-      // Parse GPIO response (only on module page)
+      // Parse GPIO response (only on module page or if gpioConfig is empty)
       const gpioKeys = Object.keys(json).filter(k => k.startsWith('GPIO'));
-      if (gpioKeys.length > 0 && currentPage === 'module') {
+      if (gpioKeys.length > 0) {
         const newConfig: Record<string, string> = {};
         gpioKeys.forEach(key => {
           const pin = key.replace('GPIO', '');
@@ -213,7 +228,7 @@ export function TasmotaConfigModal({
       
       // Fallback regex parsing
       const moduleMatch = payload.match(/"Module":(\d+)/);
-      if (moduleMatch && currentPage === 'module') {
+      if (moduleMatch) {
         console.log('✅ Module ID (regex):', moduleMatch[1]);
         setCurrentModuleId(moduleMatch[1]);
         if (!moduleSelect) {
@@ -221,8 +236,18 @@ export function TasmotaConfigModal({
         }
       }
       
+      // Parse Module object format: {"Module":{"1":"Sonoff Basic"}}
+      const moduleObjMatch = payload.match(/"Module":\{"(\d+)":"[^"]+"\}/);
+      if (moduleObjMatch) {
+        console.log('✅ Module ID (object):', moduleObjMatch[1]);
+        setCurrentModuleId(moduleObjMatch[1]);
+        if (!moduleSelect) {
+          setModuleSelect(moduleObjMatch[1]);
+        }
+      }
+      
       const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
-      if (gpioMatches && currentPage === 'module') {
+      if (gpioMatches) {
         const newConfig: Record<string, string> = {};
         gpioMatches.forEach(item => {
           const match = item.match(/"GPIO(\d+)":(\d+)/);
@@ -407,11 +432,7 @@ export function TasmotaConfigModal({
             <select 
               className="w-full px-3 py-2 border rounded-lg text-sm"
               value={moduleSelect || currentModuleId || ''}
-              onChange={(e) => {
-                setModuleSelect(e.target.value);
-                // Clear GPIO config when module changes
-                setGpioConfig({});
-              }}
+              onChange={(e) => setModuleSelect(e.target.value)}
             >
               <option value="">-- Select module --</option>
               {modules.map(m => (
