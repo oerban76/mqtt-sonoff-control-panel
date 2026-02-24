@@ -146,7 +146,7 @@ export function TasmotaConfigModal({
         const moduleId = String(json.Module);
         console.log('✅ Module ID:', moduleId);
         setCurrentModuleId(moduleId);
-        setModuleSelect(moduleId);
+        setModuleSelect(prev => prev || moduleId);
       }
       
       // Parse GPIO response
@@ -158,7 +158,7 @@ export function TasmotaConfigModal({
           newConfig[`gpio${pin}`] = String(json[key]);
         });
         console.log('✅ GPIO Config:', newConfig);
-        setGpioConfig(newConfig);
+        setGpioConfig(prev => ({ ...prev, ...newConfig }));
       }
       
       // Parse Timers response
@@ -204,7 +204,7 @@ export function TasmotaConfigModal({
       if (moduleMatch) {
         console.log('✅ Module ID (regex):', moduleMatch[1]);
         setCurrentModuleId(moduleMatch[1]);
-        setModuleSelect(moduleMatch[1]);
+        setModuleSelect(prev => prev || moduleMatch[1]);
       }
       
       const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
@@ -215,7 +215,7 @@ export function TasmotaConfigModal({
           if (match) newConfig[`gpio${match[1]}`] = match[2];
         });
         console.log('✅ GPIO Config (regex):', newConfig);
-        setGpioConfig(newConfig);
+        setGpioConfig(prev => ({ ...prev, ...newConfig }));
       }
     }
     
