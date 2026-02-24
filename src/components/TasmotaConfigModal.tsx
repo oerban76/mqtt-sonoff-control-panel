@@ -166,10 +166,8 @@ export function TasmotaConfigModal({
         
         if (moduleId) {
           console.log('✅ Module ID:', moduleId);
-          setCurrentModuleId(moduleId);
-          if (!moduleSelect) {
-            setModuleSelect(moduleId);
-          }
+          setCurrentModuleId(prev => prev === moduleId ? prev : moduleId);
+          setModuleSelect(prev => prev ? prev : moduleId);
         }
       }
       
@@ -234,19 +232,15 @@ export function TasmotaConfigModal({
       const moduleMatch = payload.match(/"Module":(\d+)/);
       if (moduleMatch) {
         console.log('✅ Module ID (regex):', moduleMatch[1]);
-        setCurrentModuleId(moduleMatch[1]);
-        if (!moduleSelect) {
-          setModuleSelect(moduleMatch[1]);
-        }
+        setCurrentModuleId(prev => prev === moduleMatch[1] ? prev : moduleMatch[1]);
+        setModuleSelect(prev => prev ? prev : moduleMatch[1]);
       }
       
       const moduleObjMatch = payload.match(/"Module":\{"(\d+)":"[^"]+"\}/);
       if (moduleObjMatch) {
         console.log('✅ Module ID (object):', moduleObjMatch[1]);
-        setCurrentModuleId(moduleObjMatch[1]);
-        if (!moduleSelect) {
-          setModuleSelect(moduleObjMatch[1]);
-        }
+        setCurrentModuleId(prev => prev === moduleObjMatch[1] ? prev : moduleObjMatch[1]);
+        setModuleSelect(prev => prev ? prev : moduleObjMatch[1]);
       }
       
       const gpioMatches = payload.match(/"GPIO(\d+)":(\d+)/g);
@@ -278,20 +272,15 @@ export function TasmotaConfigModal({
       }
     }
     
-    // Update console history
+    // Update console history only when needed
     if (isOpen) {
       const formattedMsg = `${lastMessage.topic}: ${lastMessage.payload}`;
       setConsoleHistory(prev => {
         if (prev.length > 0 && prev[prev.length - 1] === formattedMsg) return prev;
         return [...prev.slice(-50), formattedMsg];
       });
-      setTimeout(() => {
-        if (consoleRef.current) {
-          consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
-        }
-      }, 50);
     }
-  }, [lastMessage, device.topic, isOpen, moduleSelect]);
+  }, [lastMessage, device.topic, isOpen]);
 
   if (!isOpen) return null;
 
