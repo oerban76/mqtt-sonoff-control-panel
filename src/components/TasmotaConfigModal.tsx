@@ -676,6 +676,7 @@ export function TasmotaConfigModal({
                 <label className="text-xs text-gray-500">Enable</label>
                 <select 
                   className="w-full px-2 py-1 border rounded text-sm"
+                  value={timerInputs[`timer${num}_enable`] || '0'}
                   onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_enable`]: e.target.value }))}
                 >
                   <option value="0">OFF</option>
@@ -686,6 +687,7 @@ export function TasmotaConfigModal({
                 <label className="text-xs text-gray-500">Mode</label>
                 <select 
                   className="w-full px-2 py-1 border rounded text-sm"
+                  value={timerInputs[`timer${num}_mode`] || '0'}
                   onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_mode`]: e.target.value }))}
                 >
                   <option value="0">Scheduler</option>
@@ -701,6 +703,7 @@ export function TasmotaConfigModal({
                 <input
                   type="time"
                   className="w-full px-2 py-1 border rounded text-sm"
+                  value={timerInputs[`timer${num}_time`] || ''}
                   onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_time`]: e.target.value }))}
                 />
               </div>
@@ -710,6 +713,7 @@ export function TasmotaConfigModal({
                   type="number"
                   placeholder="±min"
                   className="w-full px-2 py-1 border rounded text-sm"
+                  value={timerInputs[`timer${num}_window`] || ''}
                   onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_window`]: e.target.value }))}
                 />
               </div>
@@ -746,6 +750,7 @@ export function TasmotaConfigModal({
                 <label className="text-xs text-gray-500">Repeat</label>
                 <select 
                   className="w-full px-2 py-1 border rounded text-sm"
+                  value={timerInputs[`timer${num}_repeat`] || '0'}
                   onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_repeat`]: e.target.value }))}
                 >
                   <option value="0">OFF</option>
@@ -756,6 +761,7 @@ export function TasmotaConfigModal({
                 <label className="text-xs text-gray-500">Output</label>
                 <select 
                   className="w-full px-2 py-1 border rounded text-sm"
+                  value={timerInputs[`timer${num}_output`] || '1'}
                   onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_output`]: e.target.value }))}
                 >
                   {[1,2,3,4,5,6,7,8].map(o => <option key={o} value={o}>{o}</option>)}
@@ -765,6 +771,7 @@ export function TasmotaConfigModal({
                 <label className="text-xs text-gray-500">Action</label>
                 <select 
                   className="w-full px-2 py-1 border rounded text-sm"
+                  value={timerInputs[`timer${num}_action`] || '0'}
                   onChange={(e) => setTimerInputs(prev => ({ ...prev, [`timer${num}_action`]: e.target.value }))}
                 >
                   <option value="0">OFF</option>
